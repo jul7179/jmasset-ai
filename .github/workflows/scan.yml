@@ -1,0 +1,39 @@
+name: JM.ASSET AI — 매일 자동 스캔
+
+on:
+  schedule:
+    - cron: '0 23 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 코드 가져오기
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python 3.11 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 패키지 설치
+        run: pip install -r requirements.txt
+
+      - name: 🔍 종목 스캔 실행
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          KAKAO_TOKEN:  ${{ secrets.KAKAO_TOKEN }}
+        run: python scraper.py
+
+      - name: 💾 결과 저장 및 커밋
+        run: |
+          git config user.name  "JM.ASSET AI Bot"
+          git config user.email "bot@jmasset.ai"
+          git add data/results.json
+          git diff --staged --quiet || git commit -m "📊 스캔 결과 업데이트 $(date +'%Y-%m-%d %H:%M')"
+          git push
