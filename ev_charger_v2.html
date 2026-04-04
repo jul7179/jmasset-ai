@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="theme-color" content="#0a0f18"/>
+<title>ChargeMap — 전기차 충전 단가 비교</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f18; --bg2:#111827; --bg3:#1a2333;
+  --border:#1e2d42; --border2:#263650;
+  --teal:#00d4aa; --teal-dk:#00a882; --teal-lt:rgba(0,212,170,.1);
+  --blue:#3b82f6; --blue-lt:rgba(59,130,246,.1);
+  --amber:#f59e0b; --amber-lt:rgba(245,158,11,.1);
+  --red:#ef4444; --red-lt:rgba(239,68,68,.1);
+  --green:#22c55e; --green-lt:rgba(34,197,94,.1);
+  --t1:#f0f6ff; --t2:#94a3b8; --t3:#475569;
+  --sh:0 4px 24px rgba(0,0,0,.4);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,170,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+/* ── 헤더 ── */
+.header{position:sticky;top:0;z-index:100;background:rgba(10,15,24,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--teal),#00a882);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(0,212,170,.35);}
+.logo-name{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--teal);letter-spacing:2px;}
+.logo-sub{font-size:10px;color:var(--t3);letter-spacing:1.5px;}
+.hd-right{display:flex;align-items:center;gap:10px;}
+.api-pill{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:5px 12px;border-radius:99px;background:var(--bg3);border:1px solid var(--border);color:var(--t2);}
+.api-dot{width:6px;height:6px;border-radius:50%;background:var(--t3);}
+.api-dot.ok{background:var(--green);animation:blink 2s infinite;}
+.api-dot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-cfg{width:36px;height:36px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;}
+.btn-cfg:hover{border-color:var(--teal);}
+
+/* ── 메인 ── */
+main{position:relative;z-index:1;padding:20px;max-width:1100px;margin:0 auto;}
+
+/* ── API 키 섹션 ── */
+.api-section{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:24px;margin-bottom:20px;}
+.api-section.hidden{display:none;}
+.api-title{font-size:15px;font-weight:700;margin-bottom:5px;}
+.api-desc{font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.7;}
+.api-desc a{color:var(--teal);text-decoration:none;}
+.api-desc code{font-family:'DM Mono',monospace;background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--teal);}
+.inp-row{display:flex;gap:10px;flex-wrap:wrap;}
+.api-inp{flex:1;min-width:200px;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;color:var(--t1);font-size:13px;font-family:'DM Mono',monospace;outline:none;transition:border-color .2s;}
+.api-inp:focus{border-color:var(--teal);}
+.btn-save{padding:11px 22px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#0a0f18;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,212,170,.3);transition:all .18s;white-space:nowrap;}
+.btn-save:hover{transform:translateY(-1px);}
+
+/* ── 검색 ── */
+.search-box{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:20px;margin-bottom:20px;}
+.search-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;}
+.inp-group{display:flex;flex-direction:column;gap:5px;}
+.inp-lbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;font-weight:600;}
+.sel{padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;color:var(--t1);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;transition:border-color .2s;}
+.sel:focus{border-color:var(--teal);}
+.sel option{background:var(--bg2);}
+.txt{padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:11px;color:var(--t1);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;width:100%;transition:border-color .2s;}
+.txt:focus{border-color:var(--teal);}
+.btn-search{padding:10px 26px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#0a0f18;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,212,170,.3);transition:all .18s;height:42px;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn-search:hover{transform:translateY(-1px);}
+.btn-search:disabled{background:#1e2d42;color:var(--t3);box-shadow:none;cursor:not-allowed;transform:none;}
+
+/* ── 통계 ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;display:none;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.stat.c1::before{background:linear-gradient(90deg,var(--teal),#00a882);}
+.stat.c2::before{background:linear-gradient(90deg,var(--green),#10b981);}
+.stat.c3::before{background:linear-gradient(90deg,var(--amber),#f97316);}
+.stat.c4::before{background:linear-gradient(90deg,var(--blue),#6366f1);}
+.stat-lbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:6px;}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px;line-height:1;}
+.stat.c1 .stat-val{color:var(--teal);}
+.stat.c2 .stat-val{color:var(--green);}
+.stat.c3 .stat-val{color:var(--amber);}
+.stat.c4 .stat-val{color:var(--blue);}
+.stat-unit{font-size:12px;color:var(--t2);margin-top:3px;}
+
+/* ── 필터 ── */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;display:none;}
+.f-lbl{font-size:11px;color:var(--t3);font-weight:600;}
+.f-btn{padding:5px 13px;border-radius:99px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.f-btn:hover{border-color:var(--teal);color:var(--teal);}
+.f-btn.on{background:var(--teal-lt);border-color:var(--teal);color:var(--teal);}
+
+/* ── 결과 ── */
+.result-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:18px;overflow:hidden;}
+.result-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.r-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.r-cnt{background:var(--teal-lt);color:var(--teal);font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;font-family:'DM Mono',monospace;}
+.sort-row{display:flex;gap:5px;align-items:center;}
+.sort-lbl{font-size:11px;color:var(--t3);}
+.s-btn{padding:4px 11px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:11px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;}
+.s-btn.on{background:var(--bg3);border-color:var(--teal);color:var(--teal);}
+
+/* ── 카드 ── */
+.card-list{display:flex;flex-direction:column;}
+.ev-card{padding:16px 18px;border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;}
+.ev-card:last-child{border-bottom:none;}
+.ev-card:hover{background:rgba(0,212,170,.03);}
+.ev-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.ev-name{font-size:15px;font-weight:700;}
+.ev-addr{font-size:12px;color:var(--t3);margin-top:2px;}
+.ev-ym{font-size:11px;color:var(--t2);margin-top:2px;font-family:'DM Mono',monospace;}
+.badges{display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+.bdg{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;}
+.bdg.rapid{background:var(--red-lt);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.bdg.slow{background:var(--blue-lt);color:var(--blue);border:1px solid rgba(59,130,246,.2);}
+.bdg.pub{background:var(--teal-lt);color:var(--teal);border:1px solid rgba(0,212,170,.2);}
+
+.ev-bottom{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.price-box{display:flex;flex-direction:column;gap:1px;min-width:80px;}
+.price-type{font-size:10px;color:var(--t3);font-weight:600;letter-spacing:.3px;}
+.price-val{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:1px;color:var(--teal);line-height:1;}
+.price-val.low{color:var(--green);}
+.price-val.high{color:var(--amber);}
+.price-unit{font-size:11px;color:var(--t3);}
+.divider{width:1px;height:44px;background:var(--border);}
+.ev-info{display:flex;gap:14px;flex-wrap:wrap;}
+.info-i{display:flex;flex-direction:column;gap:2px;}
+.i-lbl{font-size:10px;color:var(--t3);letter-spacing:.3px;font-weight:600;}
+.i-val{font-size:12px;color:var(--t2);font-family:'DM Mono',monospace;}
+
+/* 단가 바 */
+.pbar-wrap{margin-top:10px;}
+.pbar-bg{height:4px;background:var(--border);border-radius:99px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:99px;transition:width .5s ease;}
+
+/* ── 로딩 / 빈 상태 ── */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:72px 20px;gap:14px;}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:72px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.empty-icon{font-size:44px;}
+.empty-t{font-size:15px;font-weight:700;color:var(--t2);}
+.empty-s{font-size:13px;color:var(--t3);line-height:1.7;}
+
+/* ── 모달 ── */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s;}
+.mover.show{opacity:1;pointer-events:all;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:22px;padding:26px;width:100%;max-width:460px;box-shadow:0 24px 80px rgba(0,0,0,.5);transform:scale(.95);transition:transform .3s;position:relative;}
+.mover.show .modal{transform:scale(1);}
+.m-close{position:absolute;top:14px;right:14px;width:30px;height:30px;background:var(--bg3);border:1px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px;}
+.m-title{font-size:17px;font-weight:700;margin-bottom:4px;}
+.m-sub{font-size:12px;color:var(--t3);margin-bottom:16px;}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.m-box{background:var(--bg);border:1px solid var(--border);border-radius:11px;padding:12px;}
+.m-box.full{grid-column:1/-1;}
+.m-lbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;font-weight:600;}
+.m-val{font-size:14px;font-weight:600;color:var(--t1);}
+.m-val.teal{color:var(--teal);font-family:'Bebas Neue',sans-serif;font-size:22px;}
+.m-val.green{color:var(--green);}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--bg2);border:1px solid var(--border2);color:var(--t1);padding:11px 22px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:9000;white-space:nowrap;box-shadow:var(--sh);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media(max-width:600px){main{padding:14px;} .search-grid{grid-template-columns:1fr 1fr;} .ev-top{flex-direction:column;} .badges{justify-content:flex-start;}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-name">ChargeMap</div>
+      <div class="logo-sub">전기차 충전 단가 비교</div>
+    </div>
+  </div>
+  <div class="hd-right">
+    <div class="api-pill"><div class="api-dot" id="apiDot"></div><span id="apiTxt">API 미연결</span></div>
+    <div class="btn-cfg" onclick="toggleCfg()">⚙️</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- API 키 입력 -->
+  <div class="api-section" id="cfgSection">
+    <div class="api-title">🔑 공공데이터 API 인증키 설정</div>
+    <div class="api-desc">
+      신청하신 <strong>"한국환경공단_기후에너지 환경부 공공급속 충전기 충전정보"</strong> API의 인증키를 입력해 주세요.<br>
+      <a href="https://data.go.kr" target="_blank">data.go.kr</a> → 마이페이지 → 개발계정 → <code>일반 인증키</code> 복사
+    </div>
+    <div class="inp-row">
+      <input class="api-inp" id="apiInp" type="password" placeholder="일반 인증키 붙여넣기 (71e834f9...)"/>
+      <button class="btn-save" onclick="saveKey()">저장 및 연결</button>
+    </div>
+  </div>
+
+  <!-- 검색 -->
+  <div class="search-box">
+    <div class="search-grid">
+      <div class="inp-group">
+        <div class="inp-lbl">연도</div>
+        <select class="sel" id="selYear">
+          <option value="2025">2025년</option>
+          <option value="2024">2024년</option>
+          <option value="2023">2023년</option>
+        </select>
+      </div>
+      <div class="inp-group">
+        <div class="inp-lbl">월</div>
+        <select class="sel" id="selMonth">
+          <option value="01">1월</option><option value="02">2월</option>
+          <option value="03">3월</option><option value="04">4월</option>
+          <option value="05">5월</option><option value="06">6월</option>
+          <option value="07">7월</option><option value="08">8월</option>
+          <option value="09">9월</option><option value="10">10월</option>
+          <option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </div>
+      <div class="inp-group">
+        <div class="inp-lbl">지역명</div>
+        <select class="sel" id="selRegion">
+          <option value="">전체</option>
+          <option value="서울">서울</option>
+          <option value="부산">부산</option>
+          <option value="대구">대구</option>
+          <option value="인천">인천</option>
+          <option value="광주">광주</option>
+          <option value="대전">대전</option>
+          <option value="울산">울산</option>
+          <option value="세종">세종</option>
+          <option value="경기">경기</option>
+          <option value="강원">강원</option>
+          <option value="충북">충북</option>
+          <option value="충남">충남</option>
+          <option value="전북">전북</option>
+          <option value="전남">전남</option>
+          <option value="경북">경북</option>
+          <option value="경남">경남</option>
+          <option value="제주">제주</option>
+        </select>
+      </div>
+      <div class="inp-group">
+        <div class="inp-lbl">충전소명</div>
+        <input class="txt" id="txtName" placeholder="예: 코엑스"/>
+      </div>
+      <button class="btn-search" id="btnSearch" onclick="doSearch()">🔍 조회</button>
+    </div>
+  </div>
+
+  <!-- 통계 -->
+  <div class="stats" id="statsRow">
+    <div class="stat c1"><div class="stat-lbl">조회 충전소</div><div class="stat-val" id="sTotal">0</div><div class="stat-unit">개소</div></div>
+    <div class="stat c2"><div class="stat-lbl">최저 단가</div><div class="stat-val" id="sMin">-</div><div class="stat-unit">원/kWh</div></div>
+    <div class="stat c3"><div class="stat-lbl">평균 단가</div><div class="stat-val" id="sAvg">-</div><div class="stat-unit">원/kWh</div></div>
+    <div class="stat c4"><div class="stat-lbl">총 충전량</div><div class="stat-val" id="sTotal2">-</div><div class="stat-unit">kWh</div></div>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filter-row" id="filterRow">
+    <span class="f-lbl">필터:</span>
+    <button class="f-btn on" onclick="setF('all',this)">전체</button>
+    <button class="f-btn" onclick="setF('cheap',this)">💚 저렴한순</button>
+    <button class="f-btn" onclick="setF('pub',this)">🏛️ 공공만</button>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-wrap">
+    <div class="result-head">
+      <div class="r-title">⚡ 충전소 단가 현황 <span class="r-cnt" id="rCnt">0건</span></div>
+      <div class="sort-row">
+        <span class="sort-lbl">정렬:</span>
+        <button class="s-btn on" onclick="setS('price',this)">단가순</button>
+        <button class="s-btn" onclick="setS('name',this)">이름순</button>
+        <button class="s-btn" onclick="setS('qty',this)">충전량순</button>
+      </div>
+    </div>
+    <div id="resultBody">
+      <div class="empty">
+        <div class="empty-icon">⚡</div>
+        <div class="empty-t">충전소를 조회해 주세요</div>
+        <div class="empty-s">연도·월·지역을 선택하고<br>조회 버튼을 눌러주세요</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- 상세 모달 -->
+<div class="mover" id="modal" onclick="closeMover(event)">
+  <div class="modal">
+    <div class="m-close" onclick="closeM()">✕</div>
+    <div class="m-title" id="mTitle"></div>
+    <div class="m-sub" id="mSub"></div>
+    <div class="m-grid" id="mContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 상수 ──
+const BASE = 'https://apis.data.go.kr/B552584/pbnstFstChrgrChgcpcyInfo/getYrMnChgcpcyInfo';
+
+// ── 상태 ──
+let API_KEY  = localStorage.getItem('cm_key') || '';
+let allData  = [];
+let filtered = [];
+let curF = 'all', curS = 'price';
+let maxPrice = 0;
+
+// ── 초기화 ──
+window.addEventListener('load', () => {
+  // 현재 연월 기본 설정
+  const now = new Date();
+  document.getElementById('selYear').value  = String(now.getFullYear());
+  const mm = String(now.getMonth() + 1).padStart(2,'0');
+  // 전월 기본 (당월 데이터는 미확정)
+  const prevMm = String(now.getMonth()).padStart(2,'0') || '12';
+  document.getElementById('selMonth').value = prevMm === '00' ? '12' : prevMm;
+
+  if (API_KEY) {
+    document.getElementById('apiInp').value = API_KEY;
+    document.getElementById('cfgSection').classList.add('hidden');
+    setStatus(true, '연결됨');
+  }
+});
+
+function toggleCfg() {
+  document.getElementById('cfgSection').classList.toggle('hidden');
+}
+
+function saveKey() {
+  const k = document.getElementById('apiInp').value.trim();
+  if (!k) { toast('⚠️ 인증키를 입력해 주세요'); return; }
+  API_KEY = k;
+  localStorage.setItem('cm_key', k);
+  document.getElementById('cfgSection').classList.add('hidden');
+  setStatus(true, '연결됨');
+  toast('✅ 인증키가 저장되었습니다');
+}
+
+function setStatus(ok, txt) {
+  const dot  = document.getElementById('apiDot');
+  const span = document.getElementById('apiTxt');
+  dot.className = 'api-dot ' + (ok ? 'ok' : 'err');
+  span.textContent = txt;
+}
+
+// ── 조회 ──
+async function doSearch() {
+  if (!API_KEY) {
+    document.getElementById('cfgSection').classList.remove('hidden');
+    toast('🔑 인증키를 먼저 입력해 주세요');
+    return;
+  }
+
+  const year   = document.getElementById('selYear').value;
+  const month  = document.getElementById('selMonth').value;
+  const region = document.getElementById('selRegion').value;
+  const name   = document.getElementById('txtName').value.trim();
+  const ym     = year + month; // 예: 202503
+
+  const btn = document.getElementById('btnSearch');
+  btn.disabled = true;
+  btn.textContent = '⏳ 조회 중...';
+  document.getElementById('resultBody').innerHTML =
+    '<div class="loading"><div class="spinner"></div><div style="font-size:14px;color:var(--t2);">공공데이터 API 조회 중...</div></div>';
+
+  try {
+    const params = new URLSearchParams({
+      serviceKey: API_KEY,
+      pageNo:     '1',
+      numOfRows:  '100',
+      dataType:   'JSON',
+      yrMn:       ym,
+    });
+    if (region) params.append('areaNm', region);
+    if (name)   params.append('statNm', name);
+
+    const url = `${BASE}?${params}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const text = await res.text();
+    let items = [];
+
+    // JSON 파싱 시도
+    try {
+      const json = JSON.parse(text);
+      const body = json?.response?.body;
+      if (body?.items?.item) {
+        items = Array.isArray(body.items.item) ? body.items.item : [body.items.item];
+      }
+    } catch {
+      // XML 파싱 시도
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, 'text/xml');
+      // 오류 코드 확인
+      const errCode = xml.querySelector('returnReasonCode')?.textContent;
+      if (errCode) throw new Error(`API 오류 코드: ${errCode}`);
+      const xmlItems = xml.querySelectorAll('item');
+      items = Array.from(xmlItems).map(el => {
+        const obj = {};
+        el.childNodes.forEach(n => { if (n.nodeType === 1) obj[n.tagName] = n.textContent.trim(); });
+        return obj;
+      });
+    }
+
+    if (!items.length) {
+      // 데이터 없을 때 데모
+      allData = getDemoData(ym, region);
+      process();
+      toast('⚠️ 실데이터 없음 — 예시 데이터로 표시');
+    } else {
+      allData = items;
+      process();
+      setStatus(true, '연결됨');
+    }
+
+  } catch (err) {
+    console.error(err);
+    allData = getDemoData(ym, region);
+    process();
+    toast('⚠️ API 오류 — 예시 데이터로 표시 (' + err.message + ')');
+    setStatus(false, 'API 오류');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔍 조회';
+}
+
+// ── 데이터 가공 ──
+function process() {
+  allData = allData.map(d => ({
+    ...d,
+    _price: parseFloat(d.unitPrice || d.chrgUnitPrice || d.upw || 0) || getEstPrice(d),
+    _qty:   parseFloat(d.chrgQty   || d.totalChrgQty || 0),
+    _name:  d.statNm  || d.chrgStaNm || d.areaNm || '-',
+    _addr:  d.addr    || d.roadAddr  || d.areaNm || '-',
+    _ym:    d.yrMn    || d.chrgYm   || '-',
+    _isPub: isPub(d),
+  }));
+
+  maxPrice = Math.max(...allData.map(d => d._price).filter(Boolean));
+  applyF();
+  updateStats();
+  document.getElementById('statsRow').style.display  = 'grid';
+  document.getElementById('filterRow').style.display = 'flex';
+}
+
+function applyF() {
+  filtered = [...allData];
+  if (curF === 'cheap') filtered.sort((a,b) => (a._price||999)-(b._price||999));
+  else if (curF === 'pub') filtered = filtered.filter(d => d._isPub);
+  applyS();
+}
+
+function applyS() {
+  if (curS === 'price') filtered.sort((a,b) => (a._price||999)-(b._price||999));
+  else if (curS === 'name') filtered.sort((a,b) => a._name.localeCompare(b._name));
+  else if (curS === 'qty') filtered.sort((a,b) => (b._qty||0)-(a._qty||0));
+  render();
+}
+
+function render() {
+  const body = document.getElementById('resultBody');
+  document.getElementById('rCnt').textContent = filtered.length + '건';
+
+  if (!filtered.length) {
+    body.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-t">결과 없음</div><div class="empty-s">다른 조건으로 조회해 보세요</div></div>';
+    return;
+  }
+
+  const minP = Math.min(...filtered.map(d=>d._price).filter(Boolean));
+  body.innerHTML = filtered.map((d,i) => {
+    const isMin   = d._price > 0 && d._price === minP;
+    const pct     = maxPrice > 0 ? (d._price / maxPrice * 100).toFixed(0) : 50;
+    const pClass  = d._price > 0 && d._price <= minP * 1.1 ? 'low' : d._price >= maxPrice * 0.85 ? 'high' : '';
+    const barClr  = d._price <= minP * 1.1 ? 'var(--green)' : d._price <= minP * 1.4 ? 'var(--teal)' : 'var(--amber)';
+    const pubBadge = d._isPub ? '<span class="bdg pub">🏛️공공</span>' : '';
+
+    return `<div class="ev-card" onclick="openM(${i})" style="animation:fi .3s ${i*.04}s both">
+      <div class="ev-top">
+        <div>
+          <div class="ev-name">${d._name} ${isMin ? '🏆' : ''}</div>
+          <div class="ev-addr">📍 ${d._addr}</div>
+          <div class="ev-ym">기준: ${d._ym || '-'}</div>
+        </div>
+        <div class="badges">${pubBadge}</div>
+      </div>
+      <div class="ev-bottom">
+        <div class="price-box">
+          <div class="price-type">충전 단가</div>
+          <div class="price-val ${pClass}">${d._price > 0 ? d._price : '-'}</div>
+          <div class="price-unit">원/kWh</div>
+        </div>
+        <div class="divider"></div>
+        <div class="ev-info">
+          <div class="info-i"><div class="i-lbl">충전량</div><div class="i-val">${d._qty > 0 ? d._qty.toLocaleString() + 'kWh' : '-'}</div></div>
+          <div class="info-i"><div class="i-lbl">운영사</div><div class="i-val">${d.busiNm || d.chrgBusiNm || '-'}</div></div>
+          <div class="info-i"><div class="i-lbl">충전기수</div><div class="i-val">${d.chrgCnt || d.chgrCnt || '-'}대</div></div>
+        </div>
+      </div>
+      <div class="pbar-wrap">
+        <div class="pbar-bg"><div class="pbar-fill" style="width:${pct}%;background:${barClr};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  const prices = allData.map(d=>d._price).filter(Boolean);
+  const qtys   = allData.map(d=>d._qty).filter(Boolean);
+  const minP   = prices.length ? Math.min(...prices) : 0;
+  const avgP   = prices.length ? Math.round(prices.reduce((a,b)=>a+b,0)/prices.length) : 0;
+  const totQ   = qtys.length   ? Math.round(qtys.reduce((a,b)=>a+b,0)) : 0;
+
+  document.getElementById('sTotal').textContent = allData.length;
+  document.getElementById('sMin').textContent   = minP || '-';
+  document.getElementById('sAvg').textContent   = avgP || '-';
+  document.getElementById('sTotal2').textContent = totQ > 0 ? totQ.toLocaleString() : '-';
+}
+
+function setF(f, el) {
+  curF = f;
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  applyF();
+}
+
+function setS(s, el) {
+  curS = s;
+  document.querySelectorAll('.s-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  applyS();
+}
+
+// ── 상세 모달 ──
+function openM(i) {
+  const d = filtered[i];
+  document.getElementById('mTitle').textContent = d._name;
+  document.getElementById('mSub').textContent   = '📍 ' + d._addr + ' | 기준: ' + (d._ym || '-');
+
+  const cost30 = d._price > 0 ? Math.round(d._price * 7.4 * 0.5) : 0; // 7.4kW × 0.5h
+  document.getElementById('mContent').innerHTML = `
+    <div class="m-box"><div class="m-lbl">충전 단가</div><div class="m-val teal">${d._price > 0 ? d._price+'원/kWh' : '-'}</div></div>
+    <div class="m-box"><div class="m-lbl">총 충전량</div><div class="m-val teal">${d._qty > 0 ? d._qty.toLocaleString()+'kWh' : '-'}</div></div>
+    <div class="m-box"><div class="m-lbl">운영사</div><div class="m-val">${d.busiNm || d.chrgBusiNm || '-'}</div></div>
+    <div class="m-box"><div class="m-lbl">충전기 수</div><div class="m-val">${d.chrgCnt || d.chgrCnt || '-'}대</div></div>
+    <div class="m-box"><div class="m-lbl">공공여부</div><div class="m-val ${d._isPub ? 'green' : ''}">${d._isPub ? '공공 충전소' : '민간 충전소'}</div></div>
+    <div class="m-box"><div class="m-lbl">기준년월</div><div class="m-val">${d._ym || '-'}</div></div>
+    <div class="m-box full"><div class="m-lbl">💡 30분 완속 충전 예상 비용</div><div class="m-val teal">${cost30 > 0 ? cost30.toLocaleString()+'원' : '-'}</div></div>`;
+  document.getElementById('modal').classList.add('show');
+}
+function closeM() { document.getElementById('modal').classList.remove('show'); }
+function closeMover(e) { if (e.target.id==='modal') closeM(); }
+
+// ── 유틸 ──
+function isPub(d) {
+  const nm = (d.busiNm || d.chrgBusiNm || '').toLowerCase();
+  return nm.includes('환경부') || nm.includes('환경공단') || nm.includes('한전') || nm.includes('공단') || nm.includes('공사') || nm.includes('시청') || nm.includes('구청');
+}
+
+function getEstPrice(d) {
+  const nm = (d.busiNm || d.chrgBusiNm || '').toLowerCase();
+  if (nm.includes('환경부') || nm.includes('환경공단')) return 324;
+  if (nm.includes('한전') || nm.includes('kepco'))      return 313;
+  if (nm.includes('제주'))                               return 150;
+  return 324;
+}
+
+function getDemoData(ym, region) {
+  const r = region || '서울';
+  return [
+    {_name:`${r} 환경부 급속충전소 A`,  _addr:`${r} 강남구 테헤란로`,  _ym:ym, _price:324, _qty:12500, _isPub:true,  busiNm:'한국환경공단', chrgCnt:4},
+    {_name:`${r} 한전 충전소`,           _addr:`${r} 서초구 방배로`,    _ym:ym, _price:313, _qty:9800,  _isPub:true,  busiNm:'한국전력공사', chrgCnt:2},
+    {_name:`${r} 이마트 충전소`,         _addr:`${r} 송파구 올림픽로`,  _ym:ym, _price:280, _qty:7200,  _isPub:false, busiNm:'이마트',       chrgCnt:6},
+    {_name:`${r} GS칼텍스 충전소`,       _addr:`${r} 마포구 월드컵북로`,_ym:ym, _price:334, _qty:5600,  _isPub:false, busiNm:'GS칼텍스',     chrgCnt:3},
+    {_name:`${r} 롯데마트 충전소`,        _addr:`${r} 영등포구 양평로`,  _ym:ym, _price:285, _qty:8900,  _isPub:false, busiNm:'롯데',         chrgCnt:4},
+    {_name:`${r} SK에너지 충전소`,        _addr:`${r} 강서구 화곡로`,    _ym:ym, _price:340, _qty:4300,  _isPub:false, busiNm:'SK에너지',     chrgCnt:2},
+    {_name:`${r} 현대 E-pit`,            _addr:`${r} 강남구 언주로`,    _ym:ym, _price:369, _qty:15000, _isPub:false, busiNm:'현대자동차',   chrgCnt:8},
+    {_name:`${r} 공영주차장 충전소`,      _addr:`${r} 중구 을지로`,      _ym:ym, _price:313, _qty:3400,  _isPub:true,  busiNm:'서울시설공단', chrgCnt:2},
+    {_name:`${r} 제주에너지 충전소`,      _addr:`${r} 제주시 연동`,      _ym:ym, _price:150, _qty:6700,  _isPub:true,  busiNm:'제주에너지공사',chrgCnt:4},
+    {_name:`${r} 한국도로공사 휴게소`,    _addr:`${r} 경부고속도로`,     _ym:ym, _price:309, _qty:22000, _isPub:true,  busiNm:'한국도로공사', chrgCnt:10},
+  ];
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 3200);
+}
+
+const s = document.createElement('style');
+s.textContent = '@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}';
+document.head.appendChild(s);
+</script>
+</body>
+</html>
