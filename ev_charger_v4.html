@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="theme-color" content="#0a0f18"/>
+<title>ChargeMap v4 — 전기차 충전소 통합 정보</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0f18;--bg2:#111827;--bg3:#1a2333;
+  --border:#1e2d42;--border2:#263650;
+  --teal:#00d4aa;--teal-dk:#00a882;--teal-lt:rgba(0,212,170,.1);
+  --blue:#3b82f6;--blue-lt:rgba(59,130,246,.12);
+  --amber:#f59e0b;--amber-lt:rgba(245,158,11,.1);
+  --red:#ef4444;--red-lt:rgba(239,68,68,.1);
+  --green:#22c55e;--green-lt:rgba(34,197,94,.1);
+  --purple:#a855f7;--purple-lt:rgba(168,85,247,.1);
+  --orange:#f97316;--orange-lt:rgba(249,115,22,.1);
+  --t1:#f0f6ff;--t2:#94a3b8;--t3:#475569;
+  --sh:0 4px 24px rgba(0,0,0,.4);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,170,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.022) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+/* ── 헤더 ── */
+.header{position:sticky;top:0;z-index:200;background:rgba(10,15,24,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--teal),#00a882);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(0,212,170,.35);}
+.logo-name{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--teal);letter-spacing:2px;}
+.logo-ver{font-size:10px;color:var(--teal);opacity:.6;letter-spacing:1px;margin-left:2px;}
+.logo-sub{font-size:9px;color:var(--t3);letter-spacing:1px;}
+.hd-right{display:flex;align-items:center;gap:8px;}
+.api-pill{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--bg3);border:1px solid var(--border);color:var(--t2);}
+.dot{width:6px;height:6px;border-radius:50%;}
+.dot.ok{background:var(--green);animation:blink 2s infinite;}
+.dot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-cfg{width:33px;height:33px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s;}
+.btn-cfg:hover{border-color:var(--teal);}
+
+/* ── 탭 ── */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:60px;z-index:100;overflow-x:auto;}
+.tab{flex:1;min-width:100px;padding:13px 8px;text-align:center;font-size:12px;font-weight:700;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+.tab.on{color:var(--teal);border-bottom-color:var(--teal);background:rgba(0,212,170,.04);}
+
+/* ── 메인 ── */
+main{position:relative;z-index:1;padding:16px;max-width:1100px;margin:0 auto;}
+
+/* ── API 설정 ── */
+.cfg-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;}
+.cfg-panel.hidden{display:none;}
+.cfg-title{font-size:14px;font-weight:700;margin-bottom:12px;}
+.api-inp{padding:10px 13px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--t1);font-size:12px;font-family:'DM Mono',monospace;outline:none;width:100%;margin-bottom:10px;transition:border-color .2s;}
+.api-inp:focus{border-color:var(--teal);}
+.cfg-btns{display:flex;gap:8px;}
+.btn-save{padding:10px 20px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#0a0f18;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .18s;}
+.btn-cancel{padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:13px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+
+/* ── 검색 박스 ── */
+.sbox{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px;}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;align-items:end;}
+.ig{display:flex;flex-direction:column;gap:4px;}
+.il{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;font-weight:600;}
+.sel{padding:9px 10px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--t1);font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px;transition:border-color .2s;}
+.sel:focus{border-color:var(--teal);}
+.sel option{background:var(--bg2);}
+.txt{padding:9px 10px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--t1);font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;width:100%;transition:border-color .2s;}
+.txt:focus{border-color:var(--teal);}
+.btn-go{padding:9px 20px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--teal),var(--teal-dk));color:#0a0f18;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(0,212,170,.28);transition:all .18s;height:39px;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.btn-go:hover{transform:translateY(-1px);}
+.btn-go:disabled{background:#1e2d42;color:var(--t3);box-shadow:none;cursor:not-allowed;transform:none;}
+
+/* ── 시설구분 빠른선택 버튼 ── */
+.facility-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.fac-lbl{font-size:10px;color:var(--t3);font-weight:600;display:flex;align-items:center;width:100%;margin-bottom:2px;}
+.fac-btn{padding:6px 12px;border-radius:99px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:4px;}
+.fac-btn:hover{border-color:var(--teal);color:var(--teal);}
+.fac-btn.on{border-color:var(--teal);color:var(--teal);background:var(--teal-lt);}
+.fac-btn.mart.on{border-color:var(--orange);color:var(--orange);background:var(--orange-lt);}
+.fac-btn.mall.on{border-color:var(--purple);color:var(--purple);background:var(--purple-lt);}
+.fac-btn.park.on{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);}
+.fac-btn.pub.on{border-color:var(--green);color:var(--green);background:var(--green-lt);}
+.fac-btn.road.on{border-color:var(--amber);color:var(--amber);background:var(--amber-lt);}
+
+/* ── 통계 ── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin-bottom:14px;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:13px;padding:13px 14px;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.s1::before{background:linear-gradient(90deg,var(--teal),#00a882);}
+.s2::before{background:linear-gradient(90deg,var(--green),#10b981);}
+.s3::before{background:linear-gradient(90deg,var(--amber),#f97316);}
+.s4::before{background:linear-gradient(90deg,var(--red),#dc2626);}
+.s5::before{background:linear-gradient(90deg,var(--blue),#6366f1);}
+.s6::before{background:linear-gradient(90deg,var(--orange),#ef4444);}
+.slbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:4px;}
+.sval{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;line-height:1;}
+.s1 .sval{color:var(--teal);}.s2 .sval{color:var(--green);}
+.s3 .sval{color:var(--amber);}.s4 .sval{color:var(--red);}
+.s5 .sval{color:var(--blue);}.s6 .sval{color:var(--orange);}
+.sunit{font-size:11px;color:var(--t2);margin-top:2px;}
+
+/* ── 필터/정렬 ── */
+.frow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center;}
+.flbl{font-size:10px;color:var(--t3);font-weight:600;}
+.fbtn{padding:4px 11px;border-radius:99px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-size:11px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.fbtn:hover{border-color:var(--teal);color:var(--teal);}
+.fbtn.on{background:var(--teal-lt);border-color:var(--teal);color:var(--teal);}
+
+/* ── 결과 박스 ── */
+.rbox{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.rhead{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;}
+.rtitle{font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
+.rcnt{background:var(--teal-lt);color:var(--teal);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;font-family:'DM Mono',monospace;}
+.srow{display:flex;gap:4px;align-items:center;}
+.slb{font-size:10px;color:var(--t3);}
+.sbtn{padding:3px 9px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--t2);font-size:11px;font-weight:600;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;}
+.sbtn.on{background:var(--bg3);border-color:var(--teal);color:var(--teal);}
+
+/* ── 충전소 카드 ── */
+.clist{display:flex;flex-direction:column;}
+.ccard{padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;position:relative;}
+.ccard:last-child{border-bottom:none;}
+.ccard:hover{background:rgba(0,212,170,.03);}
+
+/* 시설구분 색상 왼쪽 바 */
+.ccard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.ccard.fac-mart::before{background:var(--orange);}
+.ccard.fac-mall::before{background:var(--purple);}
+.ccard.fac-park::before{background:var(--blue);}
+.ccard.fac-pub::before{background:var(--green);}
+.ccard.fac-road::before{background:var(--amber);}
+.ccard.fac-etc::before{background:var(--teal);}
+
+.ctop{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;margin-bottom:8px;}
+.cname{font-size:14px;font-weight:700;}
+.caddr{font-size:11px;color:var(--t3);margin-top:2px;}
+.cfac{font-size:10px;color:var(--teal);margin-top:2px;font-weight:600;}
+.cbadges{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+.bdg{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;white-space:nowrap;}
+.bdg.avail{background:var(--green-lt);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+.bdg.busy{background:var(--amber-lt);color:var(--amber);border:1px solid rgba(245,158,11,.25);}
+.bdg.stop{background:var(--bg3);color:var(--t3);border:1px solid var(--border);}
+.bdg.rapid{background:var(--red-lt);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.bdg.slow{background:var(--blue-lt);color:var(--blue);border:1px solid rgba(59,130,246,.2);}
+.bdg.free{background:var(--green-lt);color:var(--green);border:1px solid rgba(34,197,94,.2);}
+.bdg.orange{background:var(--orange-lt);color:var(--orange);border:1px solid rgba(249,115,22,.2);}
+.bdg.purple{background:var(--purple-lt);color:var(--purple);border:1px solid rgba(168,85,247,.2);}
+.bdg.teal{background:var(--teal-lt);color:var(--teal);border:1px solid rgba(0,212,170,.2);}
+
+.cbot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.cstat-box{display:flex;flex-direction:column;gap:1px;min-width:55px;}
+.cstat-lbl{font-size:10px;color:var(--t3);font-weight:600;}
+.cstat-val{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;line-height:1;}
+.green-v{color:var(--green);}
+.red-v{color:var(--red);}
+.amber-v{color:var(--amber);}
+.teal-v{color:var(--teal);}
+.cstat-unit{font-size:10px;color:var(--t3);}
+.cdiv{width:1px;height:36px;background:var(--border);flex-shrink:0;}
+.cinfo{display:flex;gap:12px;flex-wrap:wrap;}
+.ci{display:flex;flex-direction:column;gap:1px;}
+.cilbl{font-size:10px;color:var(--t3);font-weight:600;}
+.cival{font-size:11px;color:var(--t2);font-family:'DM Mono',monospace;}
+
+/* ── 단가 탭 카드 ── */
+.pcard{padding:14px 16px;border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;}
+.pcard:last-child{border-bottom:none;}
+.pcard:hover{background:rgba(0,212,170,.03);}
+.ptop{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;margin-bottom:8px;}
+.pname{font-size:14px;font-weight:700;}
+.paddr{font-size:11px;color:var(--t3);margin-top:2px;}
+.pym{font-size:10px;color:var(--t2);margin-top:2px;font-family:'DM Mono',monospace;}
+.pbot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.price-box{display:flex;flex-direction:column;gap:1px;}
+.price-lbl{font-size:10px;color:var(--t3);font-weight:600;}
+.price-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;line-height:1;color:var(--teal);}
+.price-val.low{color:var(--green);}
+.price-val.high{color:var(--amber);}
+.price-unit{font-size:10px;color:var(--t3);}
+.pdiv{width:1px;height:40px;background:var(--border);}
+.pinfo{display:flex;gap:12px;flex-wrap:wrap;}
+.pi{display:flex;flex-direction:column;gap:1px;}
+.pilbl{font-size:10px;color:var(--t3);font-weight:600;}
+.pival{font-size:11px;color:var(--t2);font-family:'DM Mono',monospace;}
+.pbar-wrap{margin-top:8px;}
+.pbar-bg{height:4px;background:var(--border);border-radius:99px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:99px;transition:width .5s ease;}
+
+/* ── 로딩/빈 ── */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:12px;}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:60px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.ei{font-size:40px;}
+.et{font-size:14px;font-weight:700;color:var(--t2);}
+.es{font-size:12px;color:var(--t3);line-height:1.7;}
+
+/* ── 모달 ── */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .3s;}
+.mover.show{opacity:1;pointer-events:all;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:22px;width:100%;max-width:440px;box-shadow:0 24px 80px rgba(0,0,0,.5);transform:scale(.95);transition:transform .3s;position:relative;max-height:90vh;overflow-y:auto;}
+.mover.show .modal{transform:scale(1);}
+.mcls{position:absolute;top:12px;right:12px;width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px;}
+.mtit{font-size:16px;font-weight:700;margin-bottom:3px;padding-right:30px;}
+.msub{font-size:11px;color:var(--t3);margin-bottom:4px;}
+.mfac{font-size:11px;color:var(--teal);font-weight:600;margin-bottom:14px;}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.mbox{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:11px;}
+.mbox.full{grid-column:1/-1;}
+.mlbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;font-weight:600;}
+.mval{font-size:13px;font-weight:600;color:var(--t1);}
+.mval.teal{color:var(--teal);font-family:'Bebas Neue',sans-serif;font-size:20px;}
+.mval.green{color:var(--green);}
+.mval.red{color:var(--red);}
+.mval.amber{color:var(--amber);}
+.mval.orange{color:var(--orange);}
+.mval.purple{color:var(--purple);}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--bg2);border:1px solid var(--border2);color:var(--t1);padding:10px 20px;border-radius:11px;font-size:12px;font-weight:600;opacity:0;transition:all .3s;z-index:9000;white-space:nowrap;box-shadow:var(--sh);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── 탭 컨텐츠 ── */
+.tc{display:none;}
+.tc.on{display:block;}
+
+@media(max-width:600px){main{padding:12px;}.sgrid{grid-template-columns:1fr 1fr;}.stats{grid-template-columns:repeat(3,1fr);}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div style="display:flex;align-items:baseline;gap:4px;">
+        <div class="logo-name">ChargeMap</div>
+        <div class="logo-ver">v4</div>
+      </div>
+      <div class="logo-sub">전기차 충전소 통합 정보</div>
+    </div>
+  </div>
+  <div class="hd-right">
+    <div class="api-pill"><div class="dot" id="apiDot"></div><span id="apiTxt">미연결</span></div>
+    <div class="btn-cfg" onclick="toggleCfg()">⚙️</div>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <div class="tab on" id="tab1" onclick="switchTab(1)">🗺️ 충전소 위치·상태</div>
+  <div class="tab" id="tab2" onclick="switchTab(2)">💰 월별 단가 비교</div>
+</div>
+
+<main>
+
+  <!-- API 설정 -->
+  <div class="cfg-panel hidden" id="cfgPanel">
+    <div class="cfg-title">🔑 API 인증키 설정 (두 API 공통)</div>
+    <input class="api-inp" id="keyInp" type="password" placeholder="71e834f9c9d148dcab597ef197d67108cc28d6b4ddaec7272921e79f2a3f4806"/>
+    <div class="cfg-btns">
+      <button class="btn-save" onclick="saveKey()">✅ 저장</button>
+      <button class="btn-cancel" onclick="toggleCfg()">취소</button>
+    </div>
+  </div>
+
+  <!-- ══ 탭1: 위치·상태 ══ -->
+  <div class="tc on" id="content1">
+    <div class="sbox">
+      <div class="sgrid">
+        <div class="ig"><div class="il">시/도</div>
+          <select class="sel" id="s1sido">
+            <option value="">전체</option>
+            <option value="서울">서울</option><option value="부산">부산</option>
+            <option value="대구">대구</option><option value="인천">인천</option>
+            <option value="광주">광주</option><option value="대전">대전</option>
+            <option value="울산">울산</option><option value="세종">세종</option>
+            <option value="경기">경기</option><option value="강원">강원</option>
+            <option value="충북">충북</option><option value="충남">충남</option>
+            <option value="전북">전북</option><option value="전남">전남</option>
+            <option value="경북">경북</option><option value="경남">경남</option>
+            <option value="제주">제주</option>
+          </select>
+        </div>
+        <div class="ig"><div class="il">충전소명</div><input class="txt" id="s1nm" placeholder="예: 롯데마트"/></div>
+        <div class="ig"><div class="il">충전방식</div>
+          <select class="sel" id="s1type">
+            <option value="">전체</option>
+            <option value="급속">급속</option>
+            <option value="완속">완속</option>
+          </select>
+        </div>
+        <button class="btn-go" id="btn1" onclick="search1()">🔍 조회</button>
+      </div>
+
+      <!-- 시설구분 빠른선택 -->
+      <div class="facility-row">
+        <div class="fac-lbl">🏢 시설구분 빠른 선택</div>
+        <button class="fac-btn on" id="fac_all" onclick="setFac('all',this)">🔌 전체</button>
+        <button class="fac-btn mart" id="fac_mart" onclick="setFac('mart',this)">🛒 마트</button>
+        <button class="fac-btn mall" id="fac_mall" onclick="setFac('mall',this)">🏬 쇼핑몰</button>
+        <button class="fac-btn park" id="fac_park" onclick="setFac('park',this)">🅿️ 주차장</button>
+        <button class="fac-btn pub" id="fac_pub" onclick="setFac('pub',this)">🏛️ 공공기관</button>
+        <button class="fac-btn road" id="fac_road" onclick="setFac('road',this)">🛣️ 휴게소·주유소</button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats1" style="display:none;">
+      <div class="stat s1"><div class="slbl">전체</div><div class="sval" id="st1a">0</div><div class="sunit">개소</div></div>
+      <div class="stat s2"><div class="slbl">대기중</div><div class="sval" id="st1b">0</div><div class="sunit">대</div></div>
+      <div class="stat s3"><div class="slbl">충전중</div><div class="sval" id="st1c">0</div><div class="sunit">대</div></div>
+      <div class="stat s4"><div class="slbl">이용불가</div><div class="sval" id="st1d">0</div><div class="sunit">대</div></div>
+      <div class="stat s5"><div class="slbl">급속</div><div class="sval" id="st1e">0</div><div class="sunit">대</div></div>
+      <div class="stat s6"><div class="slbl">무료주차</div><div class="sval" id="st1f">0</div><div class="sunit">개소</div></div>
+    </div>
+
+    <div class="frow" id="frow1" style="display:none;">
+      <span class="flbl">상태:</span>
+      <button class="fbtn on" onclick="setF1('all',this)">전체</button>
+      <button class="fbtn" onclick="setF1('avail',this)">✅ 대기중</button>
+      <button class="fbtn" onclick="setF1('rapid',this)">⚡ 급속</button>
+      <button class="fbtn" onclick="setF1('free',this)">🆓 무료주차</button>
+    </div>
+
+    <div class="rbox">
+      <div class="rhead">
+        <div class="rtitle">🔌 충전소 현황 <span class="rcnt" id="rcnt1">0건</span></div>
+        <div class="srow">
+          <span class="slb">정렬:</span>
+          <button class="sbtn on" onclick="setS1('name',this)">이름순</button>
+          <button class="sbtn" onclick="setS1('fac',this)">시설순</button>
+          <button class="sbtn" onclick="setS1('status',this)">상태순</button>
+        </div>
+      </div>
+      <div id="body1">
+        <div class="empty"><div class="ei">🗺️</div><div class="et">충전소를 조회해 주세요</div><div class="es">시설구분 버튼으로<br>마트·쇼핑몰·주차장을 필터링할 수 있어요</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 탭2: 단가 ══ -->
+  <div class="tc" id="content2">
+    <div class="sbox">
+      <div class="sgrid">
+        <div class="ig"><div class="il">연도</div>
+          <select class="sel" id="s2yr">
+            <option value="2025">2025년</option>
+            <option value="2024">2024년</option>
+            <option value="2023">2023년</option>
+          </select>
+        </div>
+        <div class="ig"><div class="il">월</div>
+          <select class="sel" id="s2mn">
+            <option value="01">1월</option><option value="02">2월</option>
+            <option value="03">3월</option><option value="04">4월</option>
+            <option value="05">5월</option><option value="06">6월</option>
+            <option value="07">7월</option><option value="08">8월</option>
+            <option value="09">9월</option><option value="10">10월</option>
+            <option value="11">11월</option><option value="12">12월</option>
+          </select>
+        </div>
+        <div class="ig"><div class="il">지역</div>
+          <select class="sel" id="s2region">
+            <option value="">전체</option>
+            <option value="서울">서울</option><option value="부산">부산</option>
+            <option value="대구">대구</option><option value="인천">인천</option>
+            <option value="경기">경기</option><option value="강원">강원</option>
+            <option value="충북">충북</option><option value="충남">충남</option>
+            <option value="전북">전북</option><option value="전남">전남</option>
+            <option value="경북">경북</option><option value="경남">경남</option>
+            <option value="제주">제주</option>
+          </select>
+        </div>
+        <div class="ig"><div class="il">충전소명</div><input class="txt" id="s2nm" placeholder="예: 이마트"/></div>
+        <button class="btn-go" id="btn2" onclick="search2()">🔍 조회</button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats2" style="display:none;">
+      <div class="stat s1"><div class="slbl">조회</div><div class="sval" id="st2a">0</div><div class="sunit">개소</div></div>
+      <div class="stat s2"><div class="slbl">최저단가</div><div class="sval" id="st2b">-</div><div class="sunit">원/kWh</div></div>
+      <div class="stat s3"><div class="slbl">평균단가</div><div class="sval" id="st2c">-</div><div class="sunit">원/kWh</div></div>
+      <div class="stat s5"><div class="slbl">총충전량</div><div class="sval" id="st2d">-</div><div class="sunit">kWh</div></div>
+    </div>
+
+    <div class="frow" id="frow2" style="display:none;">
+      <span class="flbl">필터:</span>
+      <button class="fbtn on" onclick="setF2('all',this)">전체</button>
+      <button class="fbtn" onclick="setF2('cheap',this)">💚 저렴한순</button>
+      <button class="fbtn" onclick="setF2('pub',this)">🏛️ 공공만</button>
+    </div>
+
+    <div class="rbox">
+      <div class="rhead">
+        <div class="rtitle">💰 단가 현황 <span class="rcnt" id="rcnt2">0건</span></div>
+        <div class="srow">
+          <span class="slb">정렬:</span>
+          <button class="sbtn on" onclick="setS2('price',this)">단가순</button>
+          <button class="sbtn" onclick="setS2('name',this)">이름순</button>
+          <button class="sbtn" onclick="setS2('qty',this)">충전량순</button>
+        </div>
+      </div>
+      <div id="body2">
+        <div class="empty"><div class="ei">💰</div><div class="et">단가를 조회해 주세요</div><div class="es">연도·월·지역을 선택하고<br>조회 버튼을 눌러주세요</div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- 모달 -->
+<div class="mover" id="modal" onclick="closeMover(event)">
+  <div class="modal">
+    <div class="mcls" onclick="closeM()">✕</div>
+    <div class="mtit" id="mtit"></div>
+    <div class="msub" id="msub"></div>
+    <div class="mfac" id="mfac"></div>
+    <div class="mgrid" id="mcontent"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── API 엔드포인트 ──
+const API1 = 'https://api.odcloud.kr/api/15119741/v1/uddi:fe904caf-636f-4a49-aa94-e9064a446b3e';
+const API2 = 'https://apis.data.go.kr/B552584/pbnstFstChrgrChgcpcyInfo/getYrMnChgcpcyInfo';
+
+let KEY = localStorage.getItem('cm_key4') || '';
+
+// ── 시설구분 매핑 ──
+const FAC_MAP = {
+  mart: {
+    keys:  ['마트','대형마트','슈퍼마켓','이마트','롯데마트','홈플러스','코스트코','하이마트'],
+    label: '🛒 마트',
+    cls:   'fac-mart',
+    bdgCls:'orange'
+  },
+  mall: {
+    keys:  ['쇼핑몰','백화점','아울렛','면세점','복합쇼핑','스트리트몰','쇼핑센터','롯데월드','코엑스'],
+    label: '🏬 쇼핑몰·백화점',
+    cls:   'fac-mall',
+    bdgCls:'purple'
+  },
+  park: {
+    keys:  ['주차장','주차','공영주차','민영주차','노외주차','노상주차'],
+    label: '🅿️ 주차장',
+    cls:   'fac-park',
+    bdgCls:'blue'
+  },
+  pub: {
+    keys:  ['공공','관공서','주민센터','구청','시청','군청','경찰','소방','학교','대학','병원','보건소','복지관'],
+    label: '🏛️ 공공기관',
+    cls:   'fac-pub',
+    bdgCls:'teal'
+  },
+  road: {
+    keys:  ['휴게소','주유소','충전소','고속도로','도로공사','터미널','역','공항'],
+    label: '🛣️ 휴게소·주유소',
+    cls:   'fac-road',
+    bdgCls:'amber'
+  },
+};
+
+function getFacType(d) {
+  const text = [d['시설구분(대)'],d['시설구분(소)'],d._name,d._addr,d.statNm,d.addr].join(' ').toLowerCase();
+  for (const [type, info] of Object.entries(FAC_MAP)) {
+    if (info.keys.some(k => text.includes(k.toLowerCase()))) return type;
+  }
+  return 'etc';
+}
+
+function getFacLabel(type) {
+  return FAC_MAP[type]?.label || '🔌 기타';
+}
+function getFacCls(type) {
+  return FAC_MAP[type]?.cls || 'fac-etc';
+}
+function getFacBdgCls(type) {
+  return FAC_MAP[type]?.bdgCls || 'teal';
+}
+
+// ── 상태 ──
+let data1=[], filt1=[], curF1='all', curS1='name', curFac='all';
+let data2=[], filt2=[], curF2='all', curS2='price', maxP2=0;
+
+// ── 초기화 ──
+window.addEventListener('load',()=>{
+  const now=new Date();
+  document.getElementById('s2yr').value=String(now.getFullYear());
+  const pm=now.getMonth()===0?12:now.getMonth();
+  document.getElementById('s2mn').value=String(pm).padStart(2,'0');
+  if(KEY){document.getElementById('keyInp').value=KEY;setDot(true);}
+});
+
+function toggleCfg(){document.getElementById('cfgPanel').classList.toggle('hidden');}
+function saveKey(){
+  const k=document.getElementById('keyInp').value.trim();
+  if(!k){toast('⚠️ 인증키를 입력해 주세요');return;}
+  KEY=k;localStorage.setItem('cm_key4',k);
+  document.getElementById('cfgPanel').classList.add('hidden');
+  setDot(true);toast('✅ 저장됐습니다');
+}
+function setDot(ok){
+  document.getElementById('apiDot').className='dot '+(ok?'ok':'err');
+  document.getElementById('apiTxt').textContent=ok?'연결됨':'오류';
+}
+function switchTab(n){
+  [1,2].forEach(i=>{
+    document.getElementById('tab'+i).classList.toggle('on',i===n);
+    document.getElementById('content'+i).classList.toggle('on',i===n);
+  });
+}
+
+// ══ 탭1 조회 ══
+async function search1(){
+  if(!KEY){toggleCfg();toast('🔑 인증키를 먼저 입력해 주세요');return;}
+  const sido=document.getElementById('s1sido').value;
+  const nm=document.getElementById('s1nm').value.trim();
+  const type=document.getElementById('s1type').value;
+  const btn=document.getElementById('btn1');
+  btn.disabled=true;btn.textContent='⏳ 조회 중...';
+  document.getElementById('body1').innerHTML='<div class="loading"><div class="spinner"></div><div style="font-size:13px;color:var(--t2)">충전소 정보 불러오는 중...</div></div>';
+
+  try{
+    const params=new URLSearchParams({serviceKey:KEY,page:'1',perPage:'200'});
+    const url=`${API1}?${params}`;
+    const res=await fetch(url,{signal:AbortSignal.timeout(15000)});
+    const text=await res.text();
+    let items=[];
+    try{
+      const json=JSON.parse(text);
+      items=json?.data||[];
+      if(!Array.isArray(items))items=[items];
+    }catch{
+      const parser=new DOMParser();
+      const xml=parser.parseFromString(text,'text/xml');
+      const xi=xml.querySelectorAll('item');
+      items=Array.from(xi).map(el=>{
+        const obj={};
+        el.childNodes.forEach(n=>{if(n.nodeType===1)obj[n.tagName]=n.textContent.trim();});
+        return obj;
+      });
+    }
+    if(!items.length)throw new Error('데이터 없음');
+
+    data1=items.map(d=>({
+      ...d,
+      _name: d['충전소명']||d.statNm||'-',
+      _addr: d['주소']||d.addr||'-',
+      _stat: d['상태']||d.stat||'9',
+      _type: d['충전기타입']||d.chgerType||'-',
+      _output: d['충전용량']||d.output||'-',
+      _busi: d['운영기관']||d.busiNm||'-',
+      _free: (d['주차료무료여부']||d.parkingFree||'N')==='Y',
+      _floor: d['지상/지하']||d.flrDiv||'',
+      _lat: parseFloat(d['위도']||d.lat||0),
+      _lng: parseFloat(d['경도']||d.lng||0),
+    })).map(d=>({...d,_facType:getFacType(d)}));
+
+    // 필터 적용
+    data1=data1.filter(d=>{
+      if(sido&&!d._addr.includes(sido))return false;
+      if(nm&&!d._name.includes(nm))return false;
+      if(type==='급속'&&!d._type.includes('급속'))return false;
+      if(type==='완속'&&!d._type.includes('완속'))return false;
+      return true;
+    });
+    setDot(true);
+  }catch(e){
+    data1=demoData1(sido||'서울',nm,type);
+    toast('⚠️ 예시 데이터 표시 ('+e.message+')');
+    setDot(false);
+  }
+
+  data1=data1.map(d=>({...d,_facType:getFacType(d)}));
+  updateStats1();
+  applyFac();
+  btn.disabled=false;btn.innerHTML='🔍 조회';
+}
+
+function updateStats1(){
+  document.getElementById('st1a').textContent=data1.length;
+  document.getElementById('st1b').textContent=data1.filter(d=>d._stat==='2'||d._stat==='대기중').length;
+  document.getElementById('st1c').textContent=data1.filter(d=>d._stat==='3'||d._stat==='충전중').length;
+  document.getElementById('st1d').textContent=data1.filter(d=>['4','5','1','9'].includes(d._stat)).length;
+  document.getElementById('st1e').textContent=data1.filter(d=>d._type&&d._type.includes('급속')).length;
+  document.getElementById('st1f').textContent=data1.filter(d=>d._free).length;
+  document.getElementById('stats1').style.display='grid';
+  document.getElementById('frow1').style.display='flex';
+}
+
+// ── 시설구분 필터 ──
+function setFac(f,el){
+  curFac=f;
+  document.querySelectorAll('.fac-btn').forEach(b=>{
+    b.classList.remove('on');
+  });
+  el.classList.add('on');
+  applyFac();
+}
+
+function applyFac(){
+  let base=[...data1];
+  if(curFac!=='all') base=base.filter(d=>d._facType===curFac);
+  filt1=base;
+  applyF1inner();
+}
+
+function setF1(f,el){
+  curF1=f;
+  document.querySelectorAll('#frow1 .fbtn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  applyF1inner();
+}
+
+function applyF1inner(){
+  let base=[...filt1];
+  if(curF1==='avail') base=base.filter(d=>d._stat==='2'||d._stat==='대기중');
+  else if(curF1==='rapid') base=base.filter(d=>d._type&&d._type.includes('급속'));
+  else if(curF1==='free') base=base.filter(d=>d._free);
+  applyS1(base);
+}
+
+function setS1(s,el){
+  curS1=s;
+  document.querySelectorAll('#content1 .sbtn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  applyFac();
+}
+
+function applyS1(items){
+  if(curS1==='name') items.sort((a,b)=>a._name.localeCompare(b._name));
+  else if(curS1==='fac') items.sort((a,b)=>a._facType.localeCompare(b._facType));
+  else if(curS1==='status') items.sort((a,b)=>String(a._stat).localeCompare(String(b._stat)));
+  renderCards1(items);
+}
+
+function renderCards1(items){
+  const body=document.getElementById('body1');
+  document.getElementById('rcnt1').textContent=items.length+'건';
+  if(!items.length){body.innerHTML='<div class="empty"><div class="ei">🔍</div><div class="et">결과 없음</div><div class="es">다른 조건으로 조회해 보세요</div></div>';return;}
+  body.innerHTML=items.map((d,i)=>{
+    const si=statInfo(d._stat);
+    const facCls=getFacCls(d._facType);
+    const facLbl=getFacLabel(d._facType);
+    const facBdg=getFacBdgCls(d._facType);
+    const typBdg=d._type&&d._type.includes('급속')?'<span class="bdg rapid">⚡급속</span>':'<span class="bdg slow">🔌완속</span>';
+    const freeBdg=d._free?'<span class="bdg free">🆓무료주차</span>':'';
+    const facBadge=`<span class="bdg ${facBdg}">${facLbl}</span>`;
+    return `<div class="ccard ${facCls}" onclick="openM1(${i})" style="animation:fi .3s ${i*.03}s both">
+      <div class="ctop">
+        <div>
+          <div class="cname">${d._name}</div>
+          <div class="caddr">📍 ${d._addr}</div>
+          <div class="cfac">${facLbl}</div>
+        </div>
+        <div class="cbadges">${typBdg}<span class="bdg ${si.cls}">${si.txt}</span>${freeBdg}</div>
+      </div>
+      <div class="cbot">
+        <div class="cstat-box">
+          <div class="cstat-lbl">상태</div>
+          <div class="cstat-val ${si.vc}">${si.emoji}</div>
+          <div class="cstat-unit">${si.txt}</div>
+        </div>
+        <div class="cdiv"></div>
+        <div class="cinfo">
+          <div class="ci"><div class="cilbl">방식</div><div class="cival">${d._type||'-'}</div></div>
+          <div class="ci"><div class="cilbl">출력</div><div class="cival">${d._output?d._output+'kW':'-'}</div></div>
+          <div class="ci"><div class="cilbl">운영기관</div><div class="cival">${d._busi||'-'}</div></div>
+          ${d._floor?`<div class="ci"><div class="cilbl">위치</div><div class="cival">${d._floor}</div></div>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── 탭1 상세 ──
+let _filt1Snap=[];
+function openM1(i){
+  _filt1Snap=_filt1Snap.length?_filt1Snap:filt1;
+  const d=filt1[i]||_filt1Snap[i];
+  if(!d)return;
+  const si=statInfo(d._stat);
+  document.getElementById('mtit').textContent=d._name;
+  document.getElementById('msub').textContent='📍 '+d._addr;
+  document.getElementById('mfac').textContent=getFacLabel(d._facType);
+  document.getElementById('mcontent').innerHTML=`
+    <div class="mbox"><div class="mlbl">현재 상태</div><div class="mval ${si.vc}">${si.emoji} ${si.txt}</div></div>
+    <div class="mbox"><div class="mlbl">충전 방식</div><div class="mval">${d._type||'-'}</div></div>
+    <div class="mbox"><div class="mlbl">충전 출력</div><div class="mval teal">${d._output?d._output+'kW':'-'}</div></div>
+    <div class="mbox"><div class="mlbl">주차료</div><div class="mval ${d._free?'green':''}">${d._free?'🆓 무료':'유료'}</div></div>
+    <div class="mbox"><div class="mlbl">위치(층)</div><div class="mval">${d._floor||'-'}</div></div>
+    <div class="mbox"><div class="mlbl">운영기관</div><div class="mval">${d._busi||'-'}</div></div>
+    ${d._lat?`<div class="mbox full"><div class="mlbl">좌표</div><div class="mval" style="font-size:12px;font-family:'DM Mono',monospace;">${d._lat}, ${d._lng}</div></div>`:''}`;
+  document.getElementById('modal').classList.add('show');
+}
+
+// ══ 탭2 조회 ══
+async function search2(){
+  if(!KEY){toggleCfg();toast('🔑 인증키를 먼저 입력해 주세요');return;}
+  const yr=document.getElementById('s2yr').value;
+  const mn=document.getElementById('s2mn').value;
+  const region=document.getElementById('s2region').value;
+  const nm=document.getElementById('s2nm').value.trim();
+  const ym=yr+mn;
+  const btn=document.getElementById('btn2');
+  btn.disabled=true;btn.textContent='⏳ 조회 중...';
+  document.getElementById('body2').innerHTML='<div class="loading"><div class="spinner"></div><div style="font-size:13px;color:var(--t2)">충전 단가 데이터 불러오는 중...</div></div>';
+  try{
+    const params=new URLSearchParams({serviceKey:KEY,pageNo:'1',numOfRows:'100',dataType:'JSON',yrMn:ym});
+    if(region)params.append('areaNm',region);
+    if(nm)params.append('statNm',nm);
+    const res=await fetch(`${API2}?${params}`,{signal:AbortSignal.timeout(15000)});
+    const text=await res.text();
+    let items=[];
+    try{
+      const json=JSON.parse(text);
+      const body=json?.response?.body;
+      if(body?.items?.item){items=Array.isArray(body.items.item)?body.items.item:[body.items.item];}
+    }catch{
+      const parser=new DOMParser();
+      const xml=parser.parseFromString(text,'text/xml');
+      items=Array.from(xml.querySelectorAll('item')).map(el=>{
+        const obj={};el.childNodes.forEach(n=>{if(n.nodeType===1)obj[n.tagName]=n.textContent.trim();});
+        return obj;
+      });
+    }
+    if(!items.length)throw new Error('데이터 없음');
+    data2=items.map(d=>({...d,
+      _name:d.statNm||d.chrgStaNm||d.areaNm||'-',
+      _addr:d.addr||d.roadAddr||d.areaNm||'-',
+      _ym:d.yrMn||d.chrgYm||ym,
+      _price:parseFloat(d.unitPrice||d.chrgUnitPrice||0)||estPrice(d),
+      _qty:parseFloat(d.chrgQty||d.totalChrgQty||0),
+      _isPub:isPub2(d),
+    }));
+    setDot(true);
+  }catch(e){
+    data2=demoData2(ym,region);
+    toast('⚠️ 예시 데이터 표시 ('+e.message+')');
+    setDot(false);
+  }
+  maxP2=Math.max(...data2.map(d=>d._price).filter(Boolean));
+  renderStats2();
+  applyF2();
+  btn.disabled=false;btn.innerHTML='🔍 조회';
+}
+
+function renderStats2(){
+  const prices=data2.map(d=>d._price).filter(Boolean);
+  const minP=prices.length?Math.min(...prices):0;
+  const avgP=prices.length?Math.round(prices.reduce((a,b)=>a+b,0)/prices.length):0;
+  const totQ=Math.round(data2.reduce((a,d)=>a+(d._qty||0),0));
+  document.getElementById('st2a').textContent=data2.length;
+  document.getElementById('st2b').textContent=minP||'-';
+  document.getElementById('st2c').textContent=avgP||'-';
+  document.getElementById('st2d').textContent=totQ>0?totQ.toLocaleString():'-';
+  document.getElementById('stats2').style.display='grid';
+  document.getElementById('frow2').style.display='flex';
+}
+
+function setF2(f,el){curF2=f;document.querySelectorAll('#frow2 .fbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');applyF2();}
+function setS2(s,el){curS2=s;document.querySelectorAll('#content2 .sbtn').forEach(b=>b.classList.remove('on'));el.classList.add('on');applyF2();}
+
+function applyF2(){
+  filt2=[...data2];
+  if(curF2==='cheap')filt2.sort((a,b)=>(a._price||999)-(b._price||999));
+  else if(curF2==='pub')filt2=filt2.filter(d=>d._isPub);
+  if(curS2==='price')filt2.sort((a,b)=>(a._price||999)-(b._price||999));
+  else if(curS2==='name')filt2.sort((a,b)=>a._name.localeCompare(b._name));
+  else if(curS2==='qty')filt2.sort((a,b)=>(b._qty||0)-(a._qty||0));
+  renderCards2();
+}
+
+function renderCards2(){
+  const body=document.getElementById('body2');
+  document.getElementById('rcnt2').textContent=filt2.length+'건';
+  if(!filt2.length){body.innerHTML='<div class="empty"><div class="ei">🔍</div><div class="et">결과 없음</div></div>';return;}
+  const minP=Math.min(...filt2.map(d=>d._price).filter(Boolean));
+  body.innerHTML=filt2.map((d,i)=>{
+    const isMin=d._price>0&&d._price===minP;
+    const pct=maxP2>0?(d._price/maxP2*100).toFixed(0):50;
+    const pCls=d._price<=minP*1.1?'low':d._price>=maxP2*0.85?'high':'';
+    const barClr=d._price<=minP*1.1?'var(--green)':d._price<=minP*1.4?'var(--teal)':'var(--amber)';
+    const pubBdg=d._isPub?'<span class="bdg teal">🏛️공공</span>':'';
+    return `<div class="pcard" onclick="openM2(${i})" style="animation:fi .3s ${i*.03}s both">
+      <div class="ptop">
+        <div>
+          <div class="pname">${d._name}${isMin?' 🏆':''}</div>
+          <div class="paddr">📍 ${d._addr}</div>
+          <div class="pym">기준: ${d._ym}</div>
+        </div>
+        <div class="cbadges">${pubBdg}</div>
+      </div>
+      <div class="pbot">
+        <div class="price-box"><div class="price-lbl">충전 단가</div><div class="price-val ${pCls}">${d._price>0?d._price:'-'}</div><div class="price-unit">원/kWh</div></div>
+        <div class="pdiv"></div>
+        <div class="pinfo">
+          <div class="pi"><div class="pilbl">충전량</div><div class="pival">${d._qty>0?d._qty.toLocaleString()+'kWh':'-'}</div></div>
+          <div class="pi"><div class="pilbl">운영사</div><div class="pival">${d.busiNm||'-'}</div></div>
+          <div class="pi"><div class="pilbl">충전기수</div><div class="pival">${d.chrgCnt||'-'}대</div></div>
+        </div>
+      </div>
+      <div class="pbar-wrap"><div class="pbar-bg"><div class="pbar-fill" style="width:${pct}%;background:${barClr};"></div></div></div>
+    </div>`;
+  }).join('');
+}
+
+function openM2(i){
+  const d=filt2[i];
+  const cost30=d._price>0?Math.round(d._price*7.4*0.5):0;
+  document.getElementById('mtit').textContent=d._name;
+  document.getElementById('msub').textContent='📍 '+d._addr+' | '+d._ym;
+  document.getElementById('mfac').textContent='';
+  document.getElementById('mcontent').innerHTML=`
+    <div class="mbox"><div class="mlbl">충전 단가</div><div class="mval teal">${d._price>0?d._price+'원/kWh':'-'}</div></div>
+    <div class="mbox"><div class="mlbl">총 충전량</div><div class="mval teal">${d._qty>0?d._qty.toLocaleString()+'kWh':'-'}</div></div>
+    <div class="mbox"><div class="mlbl">운영사</div><div class="mval">${d.busiNm||d.chrgBusiNm||'-'}</div></div>
+    <div class="mbox"><div class="mlbl">충전기수</div><div class="mval">${d.chrgCnt||'-'}대</div></div>
+    <div class="mbox"><div class="mlbl">공공여부</div><div class="mval ${d._isPub?'green':''}">${d._isPub?'공공':'민간'}</div></div>
+    <div class="mbox"><div class="mlbl">기준년월</div><div class="mval">${d._ym}</div></div>
+    <div class="mbox full"><div class="mlbl">💡 30분 완속 충전 예상비용</div><div class="mval teal">${cost30>0?cost30.toLocaleString()+'원':'-'}</div></div>`;
+  document.getElementById('modal').classList.add('show');
+}
+
+// ── 모달 ──
+function closeM(){document.getElementById('modal').classList.remove('show');}
+function closeMover(e){if(e.target.id==='modal')closeM();}
+
+// ── 유틸 ──
+function statInfo(s){
+  const m={'2':{txt:'대기중',vc:'green-v',cls:'avail',emoji:'✅'},'대기중':{txt:'대기중',vc:'green-v',cls:'avail',emoji:'✅'},
+           '3':{txt:'충전중',vc:'amber-v',cls:'busy',emoji:'⚡'},'충전중':{txt:'충전중',vc:'amber-v',cls:'busy',emoji:'⚡'},
+           '4':{txt:'운영중지',vc:'red-v',cls:'stop',emoji:'🚫'},'5':{txt:'점검중',vc:'red-v',cls:'stop',emoji:'🔧'},
+           '1':{txt:'통신이상',vc:'red-v',cls:'stop',emoji:'📡'},'9':{txt:'미확인',vc:'',cls:'stop',emoji:'❓'}};
+  return m[String(s)]||{txt:'미확인',vc:'',cls:'stop',emoji:'❓'};
+}
+function isPub2(d){const nm=(d.busiNm||d.chrgBusiNm||'').toLowerCase();return nm.includes('환경부')||nm.includes('환경공단')||nm.includes('한전')||nm.includes('공단')||nm.includes('공사')||nm.includes('시청')||nm.includes('구청');}
+function estPrice(d){const nm=(d.busiNm||'').toLowerCase();if(nm.includes('환경부')||nm.includes('환경공단'))return 324;if(nm.includes('한전'))return 313;if(nm.includes('제주'))return 150;if(nm.includes('이마트'))return 280;if(nm.includes('롯데'))return 285;return 324;}
+
+// ── 데모 데이터 ──
+function demoData1(sido,nm,type){
+  const base=[
+    {_name:`${sido} 이마트 전기차 충전소`,_addr:`${sido}시 강남구 테헤란로 123`,_stat:'2',_type:'DC콤보(급속)',_output:'100',_busi:'이마트',_free:true,_floor:'지하1층','시설구분(대)':'마트','시설구분(소)':'대형마트'},
+    {_name:`${sido} 롯데마트 충전소`,_addr:`${sido}시 송파구 올림픽로 300`,_stat:'3',_type:'AC완속',_output:'7',_busi:'롯데마트',_free:true,_floor:'지하2층','시설구분(대)':'마트','시설구분(소)':'대형마트'},
+    {_name:`${sido} 코엑스 쇼핑몰`,_addr:`${sido}시 강남구 봉은사로 524`,_stat:'2',_type:'DC콤보(급속)',_output:'50',_busi:'SM타운',_free:false,_floor:'지하3층','시설구분(대)':'쇼핑몰','시설구분(소)':'복합쇼핑몰'},
+    {_name:`${sido} 롯데백화점 충전소`,_addr:`${sido}시 중구 남대문로 81`,_stat:'2',_type:'DC콤보(급속)',_output:'50',_busi:'롯데백화점',_free:false,_floor:'지하4층','시설구분(대)':'쇼핑몰','시설구분(소)':'백화점'},
+    {_name:`${sido} 공영주차장 A`,_addr:`${sido}시 마포구 월드컵북로 396`,_stat:'2',_type:'AC완속',_output:'7',_busi:'서울시설공단',_free:true,_floor:'지상1층','시설구분(대)':'주차장','시설구분(소)':'공영주차장'},
+    {_name:`${sido} 구청 주차장`,_addr:`${sido}시 강서구 공항대로 555`,_stat:'4',_type:'DC콤보(급속)',_output:'50',_busi:'강서구청',_free:true,_floor:'지하1층','시설구분(대)':'공공기관','시설구분(소)':'관공서'},
+    {_name:`${sido} 환경부 급속충전소`,_addr:`${sido}시 서초구 반포대로 20`,_stat:'2',_type:'DC콤보(급속)',_output:'50',_busi:'한국환경공단',_free:false,_floor:'지상','시설구분(대)':'공공기관','시설구분(소)':'공공기관'},
+    {_name:`고속도로 휴게소 충전소`,_addr:`경부고속도로 서울TG`,_stat:'2',_type:'DC콤보(급속)',_output:'100',_busi:'한국도로공사',_free:false,_floor:'지상','시설구분(대)':'휴게소','시설구분(소)':'고속도로휴게소'},
+    {_name:`${sido} SK에너지 주유소`,_addr:`${sido}시 영등포구 여의대로 16`,_stat:'2',_type:'DC콤보(급속)',_output:'50',_busi:'SK에너지',_free:false,_floor:'지상','시설구분(대)':'주유소','시설구분(소)':'주유소'},
+    {_name:`${sido} 현대 E-pit`,_addr:`${sido}시 강남구 언주로 120`,_stat:'2',_type:'DC콤보(급속)',_output:'350',_busi:'현대자동차',_free:false,_floor:'지상','시설구분(대)':'기타','시설구분(소)':'완성차딜러'},
+  ].map(d=>({...d,_facType:getFacType(d)}));
+  return base.filter(d=>{
+    if(nm&&!d._name.includes(nm))return false;
+    if(type==='급속'&&!d._type.includes('급속'))return false;
+    if(type==='완속'&&!d._type.includes('완속'))return false;
+    return true;
+  });
+}
+
+function demoData2(ym,region){
+  const r=region||'서울';
+  return[
+    {_name:`${r} 환경부 급속충전소`,_addr:`${r}시 강남구`,_ym:ym,_price:324,_qty:12500,_isPub:true,busiNm:'한국환경공단',chrgCnt:4},
+    {_name:`${r} 한전 충전소`,_addr:`${r}시 서초구`,_ym:ym,_price:313,_qty:9800,_isPub:true,busiNm:'한국전력공사',chrgCnt:2},
+    {_name:`${r} 이마트 everon`,_addr:`${r}시 송파구`,_ym:ym,_price:280,_qty:7200,_isPub:false,busiNm:'이마트',chrgCnt:6},
+    {_name:`${r} GS칼텍스`,_addr:`${r}시 마포구`,_ym:ym,_price:334,_qty:5600,_isPub:false,busiNm:'GS칼텍스',chrgCnt:3},
+    {_name:`${r} 롯데마트`,_addr:`${r}시 영등포`,_ym:ym,_price:285,_qty:8900,_isPub:false,busiNm:'롯데',chrgCnt:4},
+    {_name:`${r} 현대 E-pit`,_addr:`${r}시 강남구`,_ym:ym,_price:369,_qty:15000,_isPub:false,busiNm:'현대자동차',chrgCnt:8},
+    {_name:`${r} 공영주차장`,_addr:`${r}시 중구`,_ym:ym,_price:313,_qty:3400,_isPub:true,busiNm:'서울시설공단',chrgCnt:2},
+    {_name:`제주 공공충전소`,_addr:`제주시 연동`,_ym:ym,_price:150,_qty:6700,_isPub:true,busiNm:'제주에너지공사',chrgCnt:4},
+  ];
+}
+
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200);}
+
+const s=document.createElement('style');
+s.textContent='@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}';
+document.head.appendChild(s);
+</script>
+</body>
+</html>
