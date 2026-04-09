@@ -1,930 +1,483 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<meta name="theme-color" content="#0f1923"/>
-<title>ChargeMap — 전기차 충전 단가 비교</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#0a0f18;
-  --bg2:#111827;
-  --bg3:#1a2333;
-  --border:#1e2d42;
-  --border2:#263650;
-  --teal:#00d4aa;
-  --teal-dk:#00a882;
-  --teal-lt:rgba(0,212,170,.1);
-  --blue:#3b82f6;
-  --blue-lt:rgba(59,130,246,.1);
-  --amber:#f59e0b;
-  --amber-lt:rgba(245,158,11,.1);
-  --red:#ef4444;
-  --red-lt:rgba(239,68,68,.1);
-  --green:#22c55e;
-  --green-lt:rgba(34,197,94,.1);
-  --t1:#f0f6ff;
-  --t2:#94a3b8;
-  --t3:#475569;
-  --sh:0 4px 24px rgba(0,0,0,.4);
-  --sh2:0 8px 40px rgba(0,212,170,.12);
-}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden;}
-
-/* ── 배경 그리드 ── */
-body::before{
-  content:'';position:fixed;inset:0;
-  background-image:linear-gradient(rgba(0,212,170,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.03) 1px,transparent 1px);
-  background-size:48px 48px;pointer-events:none;z-index:0;
-}
-
-/* ── 헤더 ── */
-.header{
-  position:sticky;top:0;z-index:100;
-  background:rgba(10,15,24,.88);
-  backdrop-filter:blur(20px);
-  border-bottom:1px solid var(--border);
-  padding:0 24px;height:64px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-icon{
-  width:36px;height:36px;
-  background:linear-gradient(135deg,var(--teal),#00a882);
-  border-radius:10px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;
-  box-shadow:0 4px 12px rgba(0,212,170,.35);
-}
-.logo-name{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--teal);letter-spacing:2px;}
-.logo-sub{font-size:10px;color:var(--t3);letter-spacing:1.5px;text-transform:uppercase;}
-.header-right{display:flex;align-items:center;gap:12px;}
-.api-status{
-  display:flex;align-items:center;gap:6px;
-  font-size:11px;font-weight:500;
-  padding:5px 12px;border-radius:99px;
-  background:var(--bg3);border:1px solid var(--border);
-  color:var(--t2);
-}
-.api-dot{width:6px;height:6px;border-radius:50%;background:var(--t3);}
-.api-dot.ok{background:var(--green);animation:blink 2s infinite;}
-.api-dot.err{background:var(--red);}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.btn-setting{
-  width:36px;height:36px;
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:10px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  font-size:16px;transition:all .15s;
-}
-.btn-setting:hover{background:var(--border);border-color:var(--teal);}
-
-/* ── 메인 레이아웃 ── */
-main{position:relative;z-index:1;padding:24px;max-width:1200px;margin:0 auto;}
-
-/* ── API 키 입력 섹션 ── */
-.api-section{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:20px;padding:28px;margin-bottom:24px;
-}
-.api-section.hidden{display:none;}
-.api-title{font-size:16px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
-.api-desc{font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.7;}
-.api-desc a{color:var(--teal);text-decoration:none;}
-.api-input-row{display:flex;gap:10px;flex-wrap:wrap;}
-.api-inp{
-  flex:1;min-width:240px;
-  padding:12px 16px;
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:12px;color:var(--t1);
-  font-size:13px;font-family:'DM Mono',monospace;
-  outline:none;transition:border-color .2s;
-}
-.api-inp:focus{border-color:var(--teal);}
-.btn-primary{
-  padding:12px 24px;border-radius:12px;border:none;
-  background:linear-gradient(135deg,var(--teal),var(--teal-dk));
-  color:#0a0f18;font-size:13px;font-weight:700;
-  font-family:'Noto Sans KR',sans-serif;
-  cursor:pointer;white-space:nowrap;
-  box-shadow:0 4px 14px rgba(0,212,170,.3);
-  transition:all .18s;
-}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,170,.4);}
-.btn-primary:active{transform:scale(.97);}
-
-/* ── 검색 바 ── */
-.search-section{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:20px;padding:20px;margin-bottom:24px;
-}
-.search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
-.inp-group{display:flex;flex-direction:column;gap:6px;flex:1;min-width:160px;}
-.inp-label{font-size:11px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;font-weight:600;}
-.sel-inp{
-  padding:11px 14px;
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:12px;color:var(--t1);
-  font-size:13px;font-family:'Noto Sans KR',sans-serif;
-  outline:none;cursor:pointer;
-  transition:border-color .2s;
-  appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 12px center;
-  padding-right:32px;
-}
-.sel-inp:focus{border-color:var(--teal);}
-.sel-inp option{background:var(--bg2);}
-.txt-inp{
-  padding:11px 14px;
-  background:var(--bg);border:1.5px solid var(--border);
-  border-radius:12px;color:var(--t1);
-  font-size:13px;font-family:'Noto Sans KR',sans-serif;
-  outline:none;width:100%;
-  transition:border-color .2s;
-}
-.txt-inp:focus{border-color:var(--teal);}
-.btn-search{
-  padding:11px 28px;border-radius:12px;border:none;
-  background:linear-gradient(135deg,var(--teal),var(--teal-dk));
-  color:#0a0f18;font-size:14px;font-weight:700;
-  font-family:'Noto Sans KR',sans-serif;
-  cursor:pointer;white-space:nowrap;
-  box-shadow:0 4px 14px rgba(0,212,170,.3);
-  transition:all .18s;height:44px;
-  display:flex;align-items:center;gap:6px;
-}
-.btn-search:hover{transform:translateY(-1px);}
-.btn-search:disabled{background:#1e2d42;color:var(--t3);box-shadow:none;cursor:not-allowed;transform:none;}
-
-/* ── 통계 카드 ── */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px;}
-.stat-card{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:16px;padding:18px 20px;
-  position:relative;overflow:hidden;
-}
-.stat-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  border-radius:3px 3px 0 0;
-}
-.stat-card.teal::before{background:linear-gradient(90deg,var(--teal),#00a882);}
-.stat-card.blue::before{background:linear-gradient(90deg,var(--blue),#6366f1);}
-.stat-card.amber::before{background:linear-gradient(90deg,var(--amber),#f97316);}
-.stat-card.green::before{background:linear-gradient(90deg,var(--green),#10b981);}
-.stat-lbl{font-size:11px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-weight:600;}
-.stat-val{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:1px;line-height:1;}
-.stat-card.teal .stat-val{color:var(--teal);}
-.stat-card.blue .stat-val{color:var(--blue);}
-.stat-card.amber .stat-val{color:var(--amber);}
-.stat-card.green .stat-val{color:var(--green);}
-.stat-unit{font-size:13px;color:var(--t2);margin-top:4px;}
-
-/* ── 필터 바 ── */
-.filter-bar{
-  display:flex;gap:8px;flex-wrap:wrap;
-  margin-bottom:16px;align-items:center;
-}
-.filter-label{font-size:12px;color:var(--t3);font-weight:600;margin-right:4px;}
-.filter-btn{
-  padding:6px 14px;border-radius:99px;
-  border:1.5px solid var(--border);
-  background:transparent;color:var(--t2);
-  font-size:12px;font-weight:600;
-  font-family:'Noto Sans KR',sans-serif;
-  cursor:pointer;transition:all .15s;
-  white-space:nowrap;
-}
-.filter-btn:hover{border-color:var(--teal);color:var(--teal);}
-.filter-btn.active{background:var(--teal-lt);border-color:var(--teal);color:var(--teal);}
-
-/* ── 결과 테이블 ── */
-.result-wrap{
-  background:var(--bg2);border:1px solid var(--border);
-  border-radius:20px;overflow:hidden;
-}
-.result-header{
-  padding:16px 20px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
-}
-.result-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
-.result-count{
-  background:var(--teal-lt);color:var(--teal);
-  font-size:11px;font-weight:700;
-  padding:2px 10px;border-radius:99px;
-  font-family:'DM Mono',monospace;
-}
-.sort-row{display:flex;gap:6px;align-items:center;}
-.sort-label{font-size:11px;color:var(--t3);}
-.sort-btn{
-  padding:5px 12px;border-radius:8px;
-  border:1px solid var(--border);
-  background:transparent;color:var(--t2);
-  font-size:11px;font-weight:600;
-  font-family:'Noto Sans KR',sans-serif;
-  cursor:pointer;transition:all .15s;
-}
-.sort-btn.active{background:var(--bg3);border-color:var(--teal);color:var(--teal);}
-
-/* ── 카드 목록 ── */
-.card-list{display:flex;flex-direction:column;}
-.charge-card{
-  padding:18px 20px;
-  border-bottom:1px solid var(--border);
-  transition:background .15s;
-  cursor:pointer;
-}
-.charge-card:last-child{border-bottom:none;}
-.charge-card:hover{background:rgba(0,212,170,.03);}
-.cc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;}
-.cc-name{font-size:16px;font-weight:700;color:var(--t1);}
-.cc-addr{font-size:12px;color:var(--t3);margin-top:3px;}
-.cc-badges{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
-.badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap;}
-.badge.rapid{background:var(--red-lt);color:var(--red);border:1px solid rgba(239,68,68,.2);}
-.badge.slow{background:var(--blue-lt);color:var(--blue);border:1px solid rgba(59,130,246,.2);}
-.badge.available{background:var(--green-lt);color:var(--green);border:1px solid rgba(34,197,94,.2);}
-.badge.busy{background:var(--red-lt);color:var(--red);border:1px solid rgba(239,68,68,.2);}
-.badge.unknown{background:var(--bg3);color:var(--t3);border:1px solid var(--border);}
-.cc-bottom{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-.price-box{display:flex;flex-direction:column;gap:2px;}
-.price-type{font-size:10px;color:var(--t3);letter-spacing:.5px;font-weight:600;}
-.price-val{
-  font-family:'Bebas Neue',sans-serif;
-  font-size:28px;letter-spacing:1px;
-  color:var(--teal);line-height:1;
-}
-.price-val.high{color:var(--amber);}
-.price-val.low{color:var(--green);}
-.price-unit{font-size:11px;color:var(--t3);}
-.price-divider{width:1px;height:40px;background:var(--border);}
-.cc-info{display:flex;gap:14px;flex-wrap:wrap;}
-.info-item{display:flex;flex-direction:column;gap:2px;}
-.info-lbl{font-size:10px;color:var(--t3);letter-spacing:.5px;font-weight:600;}
-.info-val{font-size:13px;color:var(--t2);font-family:'DM Mono',monospace;}
-
-/* ── 가격 바 ── */
-.price-bar-wrap{margin-top:10px;}
-.price-bar-bg{height:4px;background:var(--border);border-radius:99px;overflow:hidden;}
-.price-bar-fill{height:100%;border-radius:99px;transition:width .6s ease;}
-
-/* ── 로딩 ── */
-.loading{
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;padding:80px 20px;gap:16px;
-}
-.loading-spinner{
-  width:40px;height:40px;
-  border:3px solid var(--border);
-  border-top-color:var(--teal);
-  border-radius:50%;
-  animation:spin 1s linear infinite;
-}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{font-size:14px;color:var(--t2);}
-
-/* ── 빈 상태 ── */
-.empty{
-  text-align:center;padding:80px 20px;
-  display:flex;flex-direction:column;align-items:center;gap:12px;
-}
-.empty-icon{font-size:48px;}
-.empty-title{font-size:16px;font-weight:700;color:var(--t2);}
-.empty-sub{font-size:13px;color:var(--t3);line-height:1.7;}
-
-/* ── 모달 ── */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.7);
-  backdrop-filter:blur(8px);z-index:1000;
-  display:flex;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .3s;
-  padding:20px;
-}
-.modal-overlay.show{opacity:1;pointer-events:all;}
-.modal{
-  background:var(--bg2);border:1px solid var(--border2);
-  border-radius:24px;padding:28px;
-  width:100%;max-width:480px;
-  box-shadow:0 24px 80px rgba(0,0,0,.5);
-  transform:scale(.95);transition:transform .3s;
-}
-.modal-overlay.show .modal{transform:scale(1);}
-.modal-title{font-size:18px;font-weight:700;margin-bottom:6px;}
-.modal-sub{font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.65;}
-.modal-close{
-  position:absolute;top:16px;right:16px;
-  width:32px;height:32px;background:var(--bg3);
-  border:1px solid var(--border);border-radius:50%;
-  cursor:pointer;display:flex;align-items:center;
-  justify-content:center;color:var(--t2);font-size:14px;
-}
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
-.detail-box{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px;}
-.detail-box.full{grid-column:1/-1;}
-.d-lbl{font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;font-weight:600;}
-.d-val{font-size:15px;font-weight:600;color:var(--t1);}
-.d-val.teal{color:var(--teal);font-family:'Bebas Neue',sans-serif;font-size:24px;}
-.d-val.green{color:var(--green);}
-.d-val.red{color:var(--red);}
-
-/* ── 토스트 ── */
-.toast{
-  position:fixed;bottom:24px;left:50%;
-  transform:translateX(-50%) translateY(20px);
-  background:var(--bg2);border:1px solid var(--border2);
-  color:var(--t1);padding:12px 24px;
-  border-radius:14px;font-size:13px;font-weight:600;
-  opacity:0;transition:all .3s;z-index:9000;
-  white-space:nowrap;box-shadow:var(--sh);
-}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-/* ── 반응형 ── */
-@media(max-width:640px){
-  main{padding:16px;}
-  .header{padding:0 16px;}
-  .stats-row{grid-template-columns:1fr 1fr;}
-  .cc-top{flex-direction:column;}
-  .cc-badges{justify-content:flex-start;}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>암호화폐 골든크로스 + MACD 매수 신호 추천 프로그램</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .chart-container { border: 1px solid #27272a; border-radius: 12px; background: #18181b; }
+        .signal-badge { animation: pulse 2s infinite; }
+    </style>
 </head>
-<body>
-
-<!-- 헤더 -->
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">⚡</div>
-    <div>
-      <div class="logo-name">ChargeMap</div>
-      <div class="logo-sub">전기차 충전 단가 비교</div>
-    </div>
-  </div>
-  <div class="header-right">
-    <div class="api-status">
-      <div class="api-dot" id="apiDot"></div>
-      <span id="apiStatusText">API 미연결</span>
-    </div>
-    <div class="btn-setting" onclick="toggleApiSection()" title="API 키 설정">⚙️</div>
-  </div>
-</header>
-
-<main>
-
-  <!-- API 키 입력 -->
-  <div class="api-section" id="apiSection">
-    <div class="api-title">🔑 공공데이터 API 키 설정</div>
-    <div class="api-desc">
-      <a href="https://data.go.kr" target="_blank">data.go.kr</a>에서
-      <strong>"한국환경공단 전기자동차 충전소 정보"</strong> API 키를 발급받아 입력해 주세요.<br>
-      키는 브라우저에 안전하게 저장되며 외부로 전송되지 않습니다.
-    </div>
-    <div class="api-input-row">
-      <input class="api-inp" id="apiKeyInput" type="password"
-             placeholder="공공데이터포털 서비스 키 입력 (URL인코딩 된 키)"/>
-      <button class="btn-primary" onclick="saveApiKey()">저장 및 연결</button>
-    </div>
-  </div>
-
-  <!-- 검색 -->
-  <div class="search-section">
-    <div class="search-row">
-      <div class="inp-group">
-        <div class="inp-label">시/도</div>
-        <select class="sel-inp" id="selSido" onchange="updateSigungu()">
-          <option value="">전체</option>
-          <option value="서울특별시">서울</option>
-          <option value="부산광역시">부산</option>
-          <option value="대구광역시">대구</option>
-          <option value="인천광역시">인천</option>
-          <option value="광주광역시">광주</option>
-          <option value="대전광역시">대전</option>
-          <option value="울산광역시">울산</option>
-          <option value="세종특별자치시">세종</option>
-          <option value="경기도">경기</option>
-          <option value="강원도">강원</option>
-          <option value="충청북도">충북</option>
-          <option value="충청남도">충남</option>
-          <option value="전라북도">전북</option>
-          <option value="전라남도">전남</option>
-          <option value="경상북도">경북</option>
-          <option value="경상남도">경남</option>
-          <option value="제주특별자치도">제주</option>
-        </select>
-      </div>
-      <div class="inp-group">
-        <div class="inp-label">충전소명 검색</div>
-        <input class="txt-inp" id="txtStation" placeholder="충전소명 입력 (선택)"/>
-      </div>
-      <div class="inp-group">
-        <div class="inp-label">충전 방식</div>
-        <select class="sel-inp" id="selChargerType">
-          <option value="">전체</option>
-          <option value="01">DC차데모</option>
-          <option value="02">AC완속</option>
-          <option value="03">DC차데모+AC3상</option>
-          <option value="04">DC콤보</option>
-          <option value="05">DC차데모+DC콤보</option>
-          <option value="06">DC차데모+AC3상+DC콤보</option>
-          <option value="07">AC3상</option>
-        </select>
-      </div>
-      <button class="btn-search" id="btnSearch" onclick="searchStations()">
-        🔍 검색
-      </button>
-    </div>
-  </div>
-
-  <!-- 통계 카드 -->
-  <div class="stats-row" id="statsRow" style="display:none;">
-    <div class="stat-card teal">
-      <div class="stat-lbl">조회된 충전소</div>
-      <div class="stat-val" id="statTotal">0</div>
-      <div class="stat-unit">개소</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-lbl">최저 급속 단가</div>
-      <div class="stat-val" id="statMinRapid">-</div>
-      <div class="stat-unit">원/kWh</div>
-    </div>
-    <div class="stat-card amber">
-      <div class="stat-lbl">평균 급속 단가</div>
-      <div class="stat-val" id="statAvgRapid">-</div>
-      <div class="stat-unit">원/kWh</div>
-    </div>
-    <div class="stat-card blue">
-      <div class="stat-lbl">사용 가능</div>
-      <div class="stat-val" id="statAvailable">0</div>
-      <div class="stat-unit">대기 중</div>
-    </div>
-  </div>
-
-  <!-- 필터 -->
-  <div class="filter-bar" id="filterBar" style="display:none;">
-    <span class="filter-label">필터:</span>
-    <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
-    <button class="filter-btn" onclick="setFilter('rapid',this)">⚡ 급속만</button>
-    <button class="filter-btn" onclick="setFilter('slow',this)">🔌 완속만</button>
-    <button class="filter-btn" onclick="setFilter('available',this)">✅ 대기중만</button>
-    <button class="filter-btn" onclick="setFilter('cheap',this)">💚 저렴한순</button>
-  </div>
-
-  <!-- 결과 -->
-  <div class="result-wrap" id="resultWrap">
-    <div class="result-header">
-      <div class="result-title">
-        🔌 충전소 단가 비교
-        <span class="result-count" id="resultCount">0건</span>
-      </div>
-      <div class="sort-row">
-        <span class="sort-label">정렬:</span>
-        <button class="sort-btn active" onclick="setSort('price',this)">단가순</button>
-        <button class="sort-btn" onclick="setSort('name',this)">이름순</button>
-        <button class="sort-btn" onclick="setSort('status',this)">상태순</button>
-      </div>
-    </div>
-    <div id="resultBody">
-      <div class="empty">
-        <div class="empty-icon">⚡</div>
-        <div class="empty-title">충전소를 검색해 주세요</div>
-        <div class="empty-sub">지역과 조건을 선택한 후<br>검색 버튼을 눌러주세요</div>
-      </div>
-    </div>
-  </div>
-
-</main>
-
-<!-- 상세 모달 -->
-<div class="modal-overlay" id="detailModal" onclick="closeModal(event)">
-  <div class="modal" style="position:relative;">
-    <div class="modal-close" onclick="closeDetail()">✕</div>
-    <div class="modal-title" id="modalTitle"></div>
-    <div class="modal-sub" id="modalAddr"></div>
-    <div class="detail-grid" id="modalContent"></div>
-  </div>
-</div>
-
-<!-- 토스트 -->
-<div class="toast" id="toast"></div>
-
-<script>
-// ── 전역 상태 ──
-let API_KEY = localStorage.getItem('chargemap_api_key') || '';
-let allData  = [];
-let filtered = [];
-let currentFilter = 'all';
-let currentSort   = 'price';
-let maxRapidPrice = 0;
-
-// ── 초기화 ──
-window.addEventListener('load', () => {
-  if (API_KEY) {
-    document.getElementById('apiKeyInput').value = API_KEY;
-    document.getElementById('apiSection').classList.add('hidden');
-    setApiStatus(true);
-  }
-});
-
-// ── API 상태 표시 ──
-function setApiStatus(ok) {
-  const dot  = document.getElementById('apiDot');
-  const text = document.getElementById('apiStatusText');
-  if (ok) {
-    dot.className  = 'api-dot ok';
-    text.textContent = 'API 연결됨';
-  } else {
-    dot.className  = 'api-dot err';
-    text.textContent = 'API 오류';
-  }
-}
-
-// ── API 키 저장 ──
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key) { showToast('⚠️ API 키를 입력해 주세요'); return; }
-  API_KEY = key;
-  localStorage.setItem('chargemap_api_key', key);
-  document.getElementById('apiSection').classList.add('hidden');
-  setApiStatus(true);
-  showToast('✅ API 키가 저장되었습니다');
-}
-
-function toggleApiSection() {
-  const sec = document.getElementById('apiSection');
-  sec.classList.toggle('hidden');
-}
-
-// ── 충전소 검색 ──
-async function searchStations() {
-  if (!API_KEY) {
-    document.getElementById('apiSection').classList.remove('hidden');
-    showToast('🔑 API 키를 먼저 입력해 주세요');
-    return;
-  }
-
-  const sido        = document.getElementById('selSido').value;
-  const stationName = document.getElementById('txtStation').value.trim();
-  const chargerType = document.getElementById('selChargerType').value;
-
-  const btn = document.getElementById('btnSearch');
-  btn.disabled = true;
-  btn.innerHTML = '⏳ 검색 중...';
-
-  document.getElementById('resultBody').innerHTML = `
-    <div class="loading">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">충전소 데이터를 불러오는 중...</div>
-    </div>`;
-
-  try {
-    // 공공데이터 API 호출 (CORS 프록시 사용)
-    const params = new URLSearchParams({
-      serviceKey:  API_KEY,
-      pageNo:      '1',
-      numOfRows:   '100',
-      dataType:    'JSON',
-    });
-    if (sido)        params.append('zcode',     getSidoCode(sido));
-    if (stationName) params.append('statNm',    stationName);
-    if (chargerType) params.append('chgerType', chargerType);
-
-    const BASE = 'https://apis.data.go.kr/B552584/EvCharger/getChargerInfo';
-    const url  = `${BASE}?${params.toString()}`;
-
-    const res  = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    const text = await res.text();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      // XML 응답일 경우 파싱
-      const parser = new DOMParser();
-      const xml    = parser.parseFromString(text, 'text/xml');
-      const items  = xml.querySelectorAll('item');
-      data = { response: { body: { items: { item: Array.from(items).map(parseXmlItem) }, totalCount: items.length } } };
-    }
-
-    const items = data?.response?.body?.items?.item;
-    if (!items) throw new Error('데이터 없음');
-
-    allData = Array.isArray(items) ? items : [items];
-    processData();
-    setApiStatus(true);
-
-  } catch (err) {
-    console.error(err);
-    // 데모 데이터로 폴백
-    allData = getDemoData(sido || '서울특별시');
-    processData();
-    showToast('⚠️ API 호출 실패 — 데모 데이터로 표시합니다');
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = '🔍 검색';
-}
-
-function parseXmlItem(el) {
-  const get = tag => el.querySelector(tag)?.textContent?.trim() || '';
-  return {
-    statNm:    get('statNm'),
-    addr:      get('addr'),
-    chgerType: get('chgerType'),
-    stat:      get('stat'),
-    output:    get('output'),
-    method:    get('method'),
-    useTime:   get('useTime'),
-    busiNm:    get('busiNm'),
-    trafficYn: get('trafficYn'),
-    powerType: get('powerType'),
-  };
-}
-
-// ── 데이터 가공 및 렌더 ──
-function processData() {
-  // 단가 계산 (충전 방식별 환경부 기준 단가 + 사업자별 가감)
-  allData = allData.map(item => {
-    item._rapidPrice = calcRapidPrice(item);
-    item._slowPrice  = calcSlowPrice(item);
-    item._statusText = getStatusText(item.stat);
-    item._isRapid    = isRapid(item.chgerType);
-    return item;
-  });
-
-  maxRapidPrice = Math.max(...allData.map(d => d._rapidPrice || 0));
-  applyFilter();
-  updateStats();
-
-  document.getElementById('statsRow').style.display   = 'grid';
-  document.getElementById('filterBar').style.display  = 'flex';
-}
-
-function applyFilter() {
-  filtered = [...allData];
-  if (currentFilter === 'rapid')     filtered = filtered.filter(d => d._isRapid);
-  else if (currentFilter === 'slow') filtered = filtered.filter(d => !d._isRapid);
-  else if (currentFilter === 'available') filtered = filtered.filter(d => d.stat === '2');
-  else if (currentFilter === 'cheap') {
-    filtered.sort((a, b) => (a._rapidPrice || 999) - (b._rapidPrice || 999));
-  }
-  applySortAndRender();
-}
-
-function applySortAndRender() {
-  if (currentSort === 'price') filtered.sort((a,b) => (a._rapidPrice||999)-(b._rapidPrice||999));
-  else if (currentSort === 'name') filtered.sort((a,b) => a.statNm.localeCompare(b.statNm));
-  else if (currentSort === 'status') filtered.sort((a,b) => (a.stat||'9').localeCompare(b.stat||'9'));
-  renderCards();
-}
-
-function renderCards() {
-  const body = document.getElementById('resultBody');
-  document.getElementById('resultCount').textContent = `${filtered.length}건`;
-
-  if (!filtered.length) {
-    body.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">검색 결과가 없습니다</div><div class="empty-sub">다른 조건으로 검색해 보세요</div></div>`;
-    return;
-  }
-
-  const minPrice = Math.min(...filtered.map(d => d._rapidPrice).filter(Boolean));
-
-  body.innerHTML = filtered.map((item, i) => {
-    const isLowest = item._rapidPrice === minPrice && item._rapidPrice > 0;
-    const pricePct = maxRapidPrice > 0 ? (item._rapidPrice / maxRapidPrice * 100).toFixed(0) : 50;
-    const barColor = item._rapidPrice <= minPrice * 1.1 ? 'var(--green)' : item._rapidPrice <= minPrice * 1.3 ? 'var(--teal)' : 'var(--amber)';
-    const priceClass = item._rapidPrice <= minPrice * 1.1 ? 'low' : item._rapidPrice >= maxRapidPrice * 0.85 ? 'high' : '';
-    const statusBadge = item.stat === '2'
-      ? '<span class="badge available">대기중</span>'
-      : item.stat === '3' ? '<span class="badge busy">충전중</span>'
-      : '<span class="badge unknown">미확인</span>';
-    const typeBadge = item._isRapid
-      ? '<span class="badge rapid">⚡급속</span>'
-      : '<span class="badge slow">🔌완속</span>';
-
-    return `<div class="charge-card" onclick="openDetail(${i})" style="animation:fadeIn .3s ${i*.03}s both;">
-      <div class="cc-top">
-        <div>
-          <div class="cc-name">${item.statNm || '이름없음'} ${isLowest ? '🏆' : ''}</div>
-          <div class="cc-addr">📍 ${item.addr || '주소 없음'}</div>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen pb-12">
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <!-- 헤더 -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-semibold tracking-tight">골든크로스 + MACD 매수 신호</h1>
+                <p class="text-zinc-400 mt-2 text-lg">5분봉 차트 • 비트코인, 이더리움, 솔라나, 리플, 수이</p>
+                <p class="text-emerald-400 text-sm mt-1">35분(7봉) / 500분(100봉) / 1000분(200봉) 이동평균선 골든크로스 + MACD 상승전환 시 매수 포인트 추천</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div onclick="refreshAll()" class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 px-5 py-3 rounded-2xl cursor-pointer transition-colors border border-zinc-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.058 11H1M12 3v2m0 16v2m9-9H15m-6 0a8 8 0 01-7.714-6.314M12 3a8 8 0 00-7.714 6.314" />
+                    </svg>
+                    <span class="font-medium">새로고침</span>
+                </div>
+                <div class="text-xs bg-zinc-900 px-4 py-2 rounded-2xl border border-zinc-700 flex items-center gap-1">
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    실시간 Binance 5분봉 데이터
+                </div>
+            </div>
         </div>
-        <div class="cc-badges">
-          ${typeBadge}
-          ${statusBadge}
+
+        <!-- 코인 선택 -->
+        <div class="flex gap-2 mb-8 flex-wrap" id="coin-buttons">
+            <!-- JS에서 동적으로 생성 -->
         </div>
-      </div>
-      <div class="cc-bottom">
-        <div class="price-box">
-          <div class="price-type">급속 단가</div>
-          <div class="price-val ${priceClass}">${item._rapidPrice > 0 ? item._rapidPrice : '-'}</div>
-          <div class="price-unit">원/kWh</div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- 차트 영역 -->
+            <div class="lg:col-span-8">
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <div class="flex items-center gap-3">
+                        <div id="current-coin" class="text-2xl font-semibold flex items-center gap-2">
+                            <!-- JS에서 채워짐 -->
+                        </div>
+                        <div id="current-price" class="text-3xl font-mono font-semibold text-emerald-400"></div>
+                        <div id="price-change" class="text-sm font-medium px-3 py-1 rounded-xl"></div>
+                    </div>
+                    <div id="signal-status" class="flex items-center gap-2 text-sm font-medium px-6 py-2 rounded-3xl border bg-zinc-900"></div>
+                </div>
+
+                <!-- 메인 가격 차트 -->
+                <div class="chart-container p-4 mb-6" style="height: 480px;" id="price-chart-container">
+                    <div id="price-chart" class="w-full h-full"></div>
+                </div>
+
+                <!-- MACD 차트 -->
+                <div class="chart-container p-4" style="height: 220px;" id="macd-chart-container">
+                    <div id="macd-chart" class="w-full h-full"></div>
+                </div>
+            </div>
+
+            <!-- 사이드바: 매수 추천 포인트 -->
+            <div class="lg:col-span-4 bg-zinc-900 rounded-3xl p-6 border border-zinc-700 flex flex-col">
+                <h2 class="font-semibold text-xl mb-4 flex items-center gap-2">
+                    <span>📍 매수 추천 포인트</span>
+                    <span id="signal-count" class="ml-auto text-emerald-400 text-sm font-mono bg-emerald-950 px-3 py-1 rounded-2xl"></span>
+                </h2>
+                
+                <div id="signals-list" class="flex-1 overflow-auto space-y-4 text-sm">
+                    <!-- JS에서 동적으로 채워짐 -->
+                </div>
+
+                <div class="mt-6 pt-6 border-t border-zinc-700">
+                    <div class="text-xs text-zinc-400 mb-3">알고리즘 설명</div>
+                    <div class="text-zinc-300 text-sm leading-relaxed">
+                        • 5분봉 기준<br>
+                        • 35분 MA = 7봉 SMA<br>
+                        • 500분 MA = 100봉 SMA<br>
+                        • 1000분 MA = 200봉 SMA<br>
+                        • <span class="text-emerald-400">골든크로스</span> : 35분MA ↑ 500분MA 또는 500분MA ↑ 1000분MA<br>
+                        • MACD(12,26,9) 상승전환 (MACD선이 Signal선 위로 교차)<br>
+                        • 두 조건 동시에 만족 시 <span class="font-semibold text-emerald-400">매수 신호</span> 발생<br>
+                        <span class="text-amber-400 text-xs mt-3 block">※ 과거 데이터 학습 기반 실시간 추천 (최근 1000봉 ≈ 83시간)</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="price-divider"></div>
-        <div class="price-box">
-          <div class="price-type">완속 단가</div>
-          <div class="price-val">${item._slowPrice > 0 ? item._slowPrice : '-'}</div>
-          <div class="price-unit">원/kWh</div>
-        </div>
-        <div class="price-divider"></div>
-        <div class="cc-info">
-          <div class="info-item">
-            <div class="info-lbl">출력</div>
-            <div class="info-val">${item.output ? item.output+'kW' : '-'}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-lbl">운영사</div>
-            <div class="info-val">${item.busiNm || '-'}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-lbl">이용시간</div>
-            <div class="info-val">${item.useTime ? item.useTime.substring(0,8) : '24시간'}</div>
-          </div>
-        </div>
-      </div>
-      <div class="price-bar-wrap">
-        <div class="price-bar-bg">
-          <div class="price-bar-fill" style="width:${pricePct}%;background:${barColor};"></div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── 통계 업데이트 ──
-function updateStats() {
-  const rapidItems = allData.filter(d => d._rapidPrice > 0);
-  const available  = allData.filter(d => d.stat === '2').length;
-  const minRapid   = rapidItems.length ? Math.min(...rapidItems.map(d => d._rapidPrice)) : 0;
-  const avgRapid   = rapidItems.length ? Math.round(rapidItems.reduce((s,d) => s+d._rapidPrice, 0) / rapidItems.length) : 0;
-
-  document.getElementById('statTotal').textContent     = allData.length;
-  document.getElementById('statMinRapid').textContent  = minRapid || '-';
-  document.getElementById('statAvgRapid').textContent  = avgRapid || '-';
-  document.getElementById('statAvailable').textContent = available;
-}
-
-// ── 필터/정렬 ──
-function setFilter(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilter();
-}
-
-function setSort(s, btn) {
-  currentSort = s;
-  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  applySortAndRender();
-}
-
-// ── 상세 모달 ──
-function openDetail(i) {
-  const item = filtered[i];
-  document.getElementById('modalTitle').textContent = item.statNm || '충전소';
-  document.getElementById('modalAddr').textContent  = '📍 ' + (item.addr || '주소 없음');
-
-  const statusColor = item.stat === '2' ? 'green' : item.stat === '3' ? 'red' : '';
-  document.getElementById('modalContent').innerHTML = `
-    <div class="detail-box">
-      <div class="d-lbl">급속 단가</div>
-      <div class="d-val teal">${item._rapidPrice > 0 ? item._rapidPrice+'원/kWh' : '-'}</div>
     </div>
-    <div class="detail-box">
-      <div class="d-lbl">완속 단가</div>
-      <div class="d-val teal">${item._slowPrice > 0 ? item._slowPrice+'원/kWh' : '-'}</div>
-    </div>
-    <div class="detail-box">
-      <div class="d-lbl">현재 상태</div>
-      <div class="d-val ${statusColor}">${item._statusText}</div>
-    </div>
-    <div class="detail-box">
-      <div class="d-lbl">충전 방식</div>
-      <div class="d-val">${getChargerTypeName(item.chgerType)}</div>
-    </div>
-    <div class="detail-box">
-      <div class="d-lbl">출력</div>
-      <div class="d-val">${item.output ? item.output+'kW' : '-'}</div>
-    </div>
-    <div class="detail-box">
-      <div class="d-lbl">운영사</div>
-      <div class="d-val">${item.busiNm || '-'}</div>
-    </div>
-    <div class="detail-box full">
-      <div class="d-lbl">이용 시간</div>
-      <div class="d-val">${item.useTime || '24시간'}</div>
-    </div>
-    <div class="detail-box full">
-      <div class="d-lbl">💡 30분 충전 예상 비용</div>
-      <div class="d-val teal">${item._rapidPrice > 0 && item.output ? Math.round(item._rapidPrice * parseFloat(item.output) * 0.5) + '원' : '-'}</div>
-    </div>`;
 
-  document.getElementById('detailModal').classList.add('show');
-}
+    <script>
+        // TailwindCSS 초기화
+        function initTailwind() {
+            tailwind.config = {
+                content: [],
+                theme: { extend: {} }
+            }
+        }
 
-function closeDetail() { document.getElementById('detailModal').classList.remove('show'); }
-function closeModal(e) { if (e.target.id === 'detailModal') closeDetail(); }
+        // 전역 변수
+        let currentSymbol = 'BTCUSDT'
+        let currentCoinName = '비트코인'
+        let priceChart = null
+        let macdChart = null
+        let currentData = []
+        let allSignals = []
 
-// ── 단가 계산 (환경부 기준 + 운영사별 보정) ──
-function calcRapidPrice(item) {
-  const busi = (item.busiNm || '').toLowerCase();
-  // 운영사별 급속 단가 (2024년 기준)
-  if (busi.includes('환경부') || busi.includes('환경공단')) return 324;
-  if (busi.includes('한전') || busi.includes('kepco'))      return 313;
-  if (busi.includes('테슬라'))                               return 385;
-  if (busi.includes('이마트') || busi.includes('신세계'))    return 280;
-  if (busi.includes('gs') || busi.includes('gs칼텍스'))      return 334;
-  if (busi.includes('sk') || busi.includes('sk에너지'))      return 340;
-  if (busi.includes('현대') || busi.includes('e-pit'))       return 369;
-  if (busi.includes('기아'))                                 return 369;
-  if (busi.includes('제주'))                                 return 150;
-  if (busi.includes('한국도로') || busi.includes('도로공사')) return 309;
-  if (busi.includes('롯데'))                                 return 285;
-  if (busi.includes('차지비'))                               return 330;
-  if (busi.includes('에버온'))                               return 292;
-  if (busi.includes('스타코프'))                             return 395;
-  // 기본값
-  if (item._isRapid) return 324;
-  return 0;
-}
+        // 코인 목록
+        const coins = [
+            { name: '비트코인', symbol: 'BTCUSDT', label: 'BTC' },
+            { name: '이더리움', symbol: 'ETHUSDT', label: 'ETH' },
+            { name: '솔라나', symbol: 'SOLUSDT', label: 'SOL' },
+            { name: '리플', symbol: 'XRPUSDT', label: 'XRP' },
+            { name: '수이', symbol: 'SUIUSDT', label: 'SUI' }
+        ]
 
-function calcSlowPrice(item) {
-  const busi = (item.busiNm || '').toLowerCase();
-  if (busi.includes('환경부') || busi.includes('환경공단')) return 173;
-  if (busi.includes('한전') || busi.includes('kepco'))      return 130;
-  if (busi.includes('제주'))                                 return 100;
-  return 173;
-}
+        // Binance API에서 5분봉 데이터 가져오기 (최대 1000봉)
+        async function fetchKlines(symbol) {
+            try {
+                const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=5m&limit=1000`)
+                if (!response.ok) throw new Error('API 오류')
+                const rawData = await response.json()
+                
+                return rawData.map(item => ({
+                    time: Math.floor(item[0] / 1000), // unix timestamp (초)
+                    open: parseFloat(item[1]),
+                    high: parseFloat(item[2]),
+                    low: parseFloat(item[3]),
+                    close: parseFloat(item[4])
+                }))
+            } catch (e) {
+                console.error(e)
+                alert('데이터를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.')
+                return []
+            }
+        }
 
-// ── 유틸 함수 ──
-function isRapid(chgerType) {
-  return ['01','03','04','05','06'].includes(chgerType);
-}
+        // SMA 계산
+        function calculateSMA(closes, period) {
+            const sma = new Array(closes.length).fill(null)
+            for (let i = period - 1; i < closes.length; i++) {
+                const sum = closes.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0)
+                sma[i] = sum / period
+            }
+            return sma
+        }
 
-function getStatusText(stat) {
-  const map = {'1':'통신이상','2':'대기중','3':'충전중','4':'운영중지','5':'점검중','9':'상태미확인'};
-  return map[stat] || '미확인';
-}
+        // EMA 계산 (선행 null 처리 포함)
+        function calculateEMA(inputSeries, period) {
+            const ema = new Array(inputSeries.length).fill(null)
+            const k = 2 / (period + 1)
+            
+            // 첫 유효 데이터 인덱스 찾기
+            let startIdx = -1
+            for (let i = 0; i < inputSeries.length; i++) {
+                if (inputSeries[i] !== null) {
+                    startIdx = i
+                    break
+                }
+            }
+            if (startIdx === -1 || inputSeries.length - startIdx < period) return ema
 
-function getChargerTypeName(t) {
-  const map = {
-    '01':'DC차데모','02':'AC완속','03':'DC차데모+AC3상',
-    '04':'DC콤보','05':'DC차데모+DC콤보','06':'DC차데모+AC3상+DC콤보','07':'AC3상'
-  };
-  return map[t] || t || '-';
-}
+            // 초기 SMA
+            let sum = 0
+            for (let j = 0; j < period; j++) {
+                sum += inputSeries[startIdx + j]
+            }
+            ema[startIdx + period - 1] = sum / period
 
-function getSidoCode(sido) {
-  const map = {
-    '서울특별시':'11','부산광역시':'26','대구광역시':'27','인천광역시':'28',
-    '광주광역시':'29','대전광역시':'30','울산광역시':'31','세종특별자치시':'36',
-    '경기도':'41','강원도':'42','충청북도':'43','충청남도':'44',
-    '전라북도':'45','전라남도':'46','경상북도':'47','경상남도':'48','제주특별자치도':'50'
-  };
-  return map[sido] || '';
-}
+            // EMA 계산
+            for (let i = startIdx + period; i < inputSeries.length; i++) {
+                if (inputSeries[i] !== null) {
+                    ema[i] = inputSeries[i] * k + ema[i - 1] * (1 - k)
+                }
+            }
+            return ema
+        }
 
-// ── 데모 데이터 ──
-function getDemoData(sido) {
-  const businesses = [
-    {busiNm:'환경부', stat:'2', output:'50', chgerType:'04'},
-    {busiNm:'한전 KEPCO', stat:'3', output:'50', chgerType:'05'},
-    {busiNm:'테슬라', stat:'2', output:'250', chgerType:'04'},
-    {busiNm:'이마트 everon', stat:'2', output:'100', chgerType:'04'},
-    {busiNm:'SK에너지', stat:'2', output:'50', chgerType:'04'},
-    {busiNm:'현대 E-pit', stat:'3', output:'350', chgerType:'04'},
-    {busiNm:'GS칼텍스', stat:'2', output:'100', chgerType:'05'},
-    {busiNm:'롯데충전', stat:'2', output:'50', chgerType:'04'},
-    {busiNm:'한국도로공사', stat:'2', output:'50', chgerType:'06'},
-    {busiNm:'차지비', stat:'4', output:'7', chgerType:'02'},
-  ];
-  const stations = [
-    '강남구청 주차장','코엑스 주차장','롯데마트 주차장','이마트 주차장',
-    'KT 본사 충전소','서울시청 주차장','홈플러스 주차장','아파트 단지내',
-    '고속도로 휴게소','공공기관 주차장'
-  ];
-  return businesses.map((b, i) => ({
-    ...b,
-    statNm:  `${sido.substring(0,2)} ${stations[i]}`,
-    addr:    `${sido} 예시구 예시동 ${100+i}번지`,
-    useTime: '00:00~24:00',
-  }));
-}
+        // MACD 계산
+        function calculateMACD(closes) {
+            const ema12 = calculateEMA(closes, 12)
+            const ema26 = calculateEMA(closes, 26)
+            
+            const macdLine = closes.map((_, i) => {
+                if (ema12[i] !== null && ema26[i] !== null) {
+                    return ema12[i] - ema26[i]
+                }
+                return null
+            })
+            
+            const signalLine = calculateEMA(macdLine, 9)
+            
+            const histogram = macdLine.map((macd, i) => {
+                if (macd !== null && signalLine[i] !== null) {
+                    return macd - signalLine[i]
+                }
+                return null
+            })
+            
+            return { macdLine, signalLine, histogram }
+        }
 
-// ── Toast ──
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
-}
+        // 매수 신호 탐지 (학습 + 추천 로직)
+        function detectBuySignals(data, ma7, ma100, ma200, macdLine, signalLine) {
+            const signals = []
+            const closes = data.map(d => d.close)
+            
+            const minIdx = Math.max(200, 26 + 9) // 충분한 데이터 확보
+            
+            for (let i = minIdx; i < data.length; i++) {
+                // 골든크로스 1: 35분MA(7) ↑ 500분MA(100)
+                const goldenShort = (ma7[i-1] < ma100[i-1] && ma7[i] >= ma100[i]) && ma7[i] !== null && ma100[i] !== null
+                
+                // 골든크로스 2: 500분MA(100) ↑ 1000분MA(200)
+                const goldenMed = (ma100[i-1] < ma200[i-1] && ma100[i] >= ma200[i]) && ma100[i] !== null && ma200[i] !== null
+                
+                // MACD 상승전환 (MACD선이 Signal선 위로 교차)
+                const macdBullish = (macdLine[i-1] < signalLine[i-1] && macdLine[i] >= signalLine[i]) && macdLine[i] !== null
+                
+                if ((goldenShort || goldenMed) && macdBullish) {
+                    let type = goldenShort ? '35분MA ↑ 500분MA' : '500분MA ↑ 1000분MA'
+                    signals.push({
+                        time: data[i].time,
+                        price: data[i].close.toLocaleString('ko-KR'),
+                        timestamp: new Date(data[i].time * 1000).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                        type: type + ' + MACD 상승전환',
+                        index: i
+                    })
+                }
+            }
+            return signals
+        }
 
-// ── CSS 애니메이션 ──
-const style = document.createElement('style');
-style.textContent = `@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`;
-document.head.appendChild(style);
-</script>
+        // 차트 그리기
+        function renderCharts(data, signals) {
+            const closes = data.map(d => d.close)
+            const ma7 = calculateSMA(closes, 7)
+            const ma100 = calculateSMA(closes, 100)
+            const ma200 = calculateSMA(closes, 200)
+            const macdData = calculateMACD(closes)
+            
+            // 메인 가격 차트
+            const priceContainer = document.getElementById('price-chart')
+            priceContainer.innerHTML = ''
+            
+            priceChart = LightweightCharts.createChart(priceContainer, {
+                width: priceContainer.clientWidth,
+                height: 460,
+                layout: { background: { color: '#18181b' }, textColor: '#a1a1aa' },
+                grid: { vertLines: { color: '#27272a' }, horzLines: { color: '#27272a' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
+                timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#3b3b40' }
+            })
+            
+            const candleSeries = priceChart.addCandlestickSeries({
+                upColor: '#22c55e',
+                downColor: '#ef4444',
+                borderVisible: false,
+                wickUpColor: '#22c55e',
+                wickDownColor: '#ef4444'
+            })
+            candleSeries.setData(data)
+            
+            // MA 라인 추가
+            const ma7Series = priceChart.addLineSeries({
+                color: '#a5b4fc',
+                lineWidth: 2,
+                title: '35분 MA (7)'
+            })
+            ma7Series.setData(data.map((d, i) => ({ time: d.time, value: ma7[i] || 0 })).filter(p => p.value > 0))
+            
+            const ma100Series = priceChart.addLineSeries({
+                color: '#c084fc',
+                lineWidth: 2,
+                title: '500분 MA (100)'
+            })
+            ma100Series.setData(data.map((d, i) => ({ time: d.time, value: ma100[i] || 0 })).filter(p => p.value > 0))
+            
+            const ma200Series = priceChart.addLineSeries({
+                color: '#fb923c',
+                lineWidth: 2,
+                title: '1000분 MA (200)'
+            })
+            ma200Series.setData(data.map((d, i) => ({ time: d.time, value: ma200[i] || 0 })).filter(p => p.value > 0))
+            
+            // 매수 신호 마커
+            const markers = signals.map(sig => ({
+                time: sig.time,
+                position: 'belowBar',
+                color: '#22c55e',
+                shape: 'arrowUp',
+                text: 'BUY'
+            }))
+            candleSeries.setMarkers(markers)
+            
+            priceChart.timeScale().fitContent()
+            
+            // MACD 차트
+            const macdContainer = document.getElementById('macd-chart')
+            macdContainer.innerHTML = ''
+            
+            macdChart = LightweightCharts.createChart(macdContainer, {
+                width: macdContainer.clientWidth,
+                height: 200,
+                layout: { background: { color: '#18181b' }, textColor: '#a1a1aa' },
+                grid: { vertLines: { color: '#27272a' }, horzLines: { color: '#27272a' } },
+                timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#3b3b40' }
+            })
+            
+            const macdLineSeries = macdChart.addLineSeries({
+                color: '#22d3ee',
+                lineWidth: 2,
+                title: 'MACD'
+            })
+            const signalLineSeries = macdChart.addLineSeries({
+                color: '#f472b6',
+                lineWidth: 2,
+                title: 'Signal'
+            })
+            const histSeries = macdChart.addHistogramSeries({
+                color: '#22c55e',
+                title: 'Histogram'
+            })
+            
+            const macdPlotData = data.map((d, i) => ({
+                time: d.time,
+                value: macdData.macdLine[i] || 0
+            })).filter(p => p.value !== 0)
+            
+            const signalPlotData = data.map((d, i) => ({
+                time: d.time,
+                value: macdData.signalLine[i] || 0
+            })).filter(p => p.value !== 0)
+            
+            const histPlotData = data.map((d, i) => ({
+                time: d.time,
+                value: macdData.histogram[i] || 0,
+                color: (macdData.histogram[i] || 0) >= 0 ? '#22c55e' : '#ef4444'
+            }))
+            
+            macdLineSeries.setData(macdPlotData)
+            signalLineSeries.setData(signalPlotData)
+            histSeries.setData(histPlotData)
+            
+            macdChart.timeScale().fitContent()
+            
+            // 마지막 가격 표시
+            const lastPrice = data[data.length - 1].close
+            document.getElementById('current-price').textContent = lastPrice.toLocaleString('ko-KR')
+            
+            // 가격 변동률 (마지막 10봉 기준)
+            const change = ((lastPrice - data[data.length - 11].close) / data[data.length - 11].close * 100).toFixed(2)
+            const changeEl = document.getElementById('price-change')
+            changeEl.textContent = change + '%'
+            changeEl.className = parseFloat(change) >= 0 
+                ? 'text-emerald-400 bg-emerald-950 text-sm font-medium px-3 py-1 rounded-xl' 
+                : 'text-red-400 bg-red-950 text-sm font-medium px-3 py-1 rounded-xl'
+        }
+
+        // 매수 신호 리스트 렌더링
+        function renderSignals(signals) {
+            allSignals = signals
+            const container = document.getElementById('signals-list')
+            container.innerHTML = ''
+            
+            document.getElementById('signal-count').textContent = signals.length + '건'
+            
+            if (signals.length === 0) {
+                container.innerHTML = `<div class="text-zinc-400 text-center py-12">최근 83시간 동안 매수 신호가 발생하지 않았습니다.</div>`
+                return
+            }
+            
+            signals.slice(-12).reverse().forEach((sig, idx) => {
+                const div = document.createElement('div')
+                div.className = 'flex justify-between items-center bg-zinc-800 hover:bg-zinc-700 p-4 rounded-2xl transition-colors'
+                div.innerHTML = `
+                    <div>
+                        <div class="font-medium">${sig.timestamp}</div>
+                        <div class="text-emerald-400 text-xs">${sig.type}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-mono font-semibold">${sig.price} USDT</div>
+                        <div class="text-emerald-400 text-xs font-medium">매수 포인트 #${signals.length - idx}</div>
+                    </div>
+                `
+                container.appendChild(div)
+            })
+            
+            // 최신 신호가 최근 3봉 이내이면 강력 추천 표시
+            const latestSignal = signals[signals.length - 1]
+            const isRecent = latestSignal && (currentData.length - latestSignal.index) <= 3
+            
+            const statusEl = document.getElementById('signal-status')
+            if (isRecent) {
+                statusEl.innerHTML = `
+                    <span class="signal-badge inline-flex items-center px-4 py-1 rounded-3xl bg-emerald-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/50">
+                        🔥 지금 매수 추천!
+                    </span>
+                    <span class="ml-3 text-emerald-400">${latestSignal.price} USDT</span>
+                `
+            } else {
+                statusEl.innerHTML = `
+                    <span class="inline-flex items-center px-4 py-1 rounded-3xl bg-zinc-700 text-zinc-300 text-sm">현재 매수 조건 미충족</span>
+                `
+            }
+        }
+
+        // 코인 로드 + 분석 실행
+        async function loadCoin(symbol, name) {
+            currentSymbol = symbol
+            currentCoinName = name
+            
+            // UI 업데이트
+            document.getElementById('current-coin').innerHTML = `
+                <span class="text-3xl">${name}</span>
+                <span class="text-zinc-400 text-xl font-mono ml-2">${symbol.replace('USDT', '')}</span>
+            `
+            document.getElementById('signals-list').innerHTML = `<div class="flex justify-center items-center h-64"><div class="animate-spin w-8 h-8 border-4 border-emerald-400 border-t-transparent rounded-full"></div></div>`
+            
+            const data = await fetchKlines(symbol)
+            if (data.length === 0) return
+            
+            currentData = data
+            
+            const closes = data.map(d => d.close)
+            const ma7 = calculateSMA(closes, 7)
+            const ma100 = calculateSMA(closes, 100)
+            const ma200 = calculateSMA(closes, 200)
+            const macdData = calculateMACD(closes)
+            
+            const signals = detectBuySignals(data, ma7, ma100, ma200, macdData.macdLine, macdData.signalLine)
+            
+            renderCharts(data, signals)
+            renderSignals(signals)
+        }
+
+        // 전체 새로고침
+        async function refreshAll() {
+            await loadCoin(currentSymbol, currentCoinName)
+        }
+
+        // 코인 버튼 생성
+        function createCoinButtons() {
+            const container = document.getElementById('coin-buttons')
+            container.innerHTML = ''
+            
+            coins.forEach(coin => {
+                const btn = document.createElement('button')
+                btn.className = `px-6 py-3 rounded-3xl font-medium transition-all flex items-center gap-2 hover:scale-105 ${coin.symbol === currentSymbol ? 'bg-white text-zinc-900 shadow-lg' : 'bg-zinc-800 hover:bg-zinc-700'}`
+                btn.innerHTML = `
+                    <span class="font-mono text-lg">${coin.label}</span>
+                    <span>${coin.name}</span>
+                `
+                btn.onclick = () => loadCoin(coin.symbol, coin.name)
+                container.appendChild(btn)
+            })
+        }
+
+        // 프로그램 시작
+        window.onload = async function() {
+            initTailwind()
+            createCoinButtons()
+            
+            // 기본 BTC 로드
+            await loadCoin('BTCUSDT', '비트코인')
+            
+            // 창 크기 변경 시 차트 리사이즈
+            window.addEventListener('resize', () => {
+                if (priceChart) priceChart.resize(document.getElementById('price-chart').clientWidth, 460)
+                if (macdChart) macdChart.resize(document.getElementById('macd-chart').clientWidth, 200)
+            })
+            
+            console.log('%c✅ 골든크로스 + MACD 매수 추천 웹프로그램이 정상 작동합니다.', 'color:#22c55e; font-size:13px; font-weight:600')
+        }
+    </script>
 </body>
 </html>
