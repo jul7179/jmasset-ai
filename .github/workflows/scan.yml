@@ -37,3 +37,6 @@ jobs:
           git add data/results.json
           git diff --staged --quiet || git commit -m "📊 스캔 결과 업데이트 $(date +'%Y-%m-%d %H:%M')"
           git push
+    
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
