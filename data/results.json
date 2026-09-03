@@ -1,24 +1,5 @@
 {
-  "scannedAt": "2026-09-02 00:44",
-  "total": 1,
-  "stocks": [
-    {
-      "code": "214150",
-      "name": "클래시스",
-      "group": "A",
-      "price": 50000,
-      "mktcap": 21201,
-      "reserveRatio": 1200,
-      "debtRatio": 18,
-      "icr": 12.4,
-      "ma112": 47129,
-      "ma224": 51834,
-      "ma448": 53781,
-      "bbUpper": 51363,
-      "bbDist": -2.65,
-      "volInc": 264,
-      "avgAmt10d": 91.5,
-      "scannedAt": "2026-09-02 00:44"
-    }
-  ]
+  "scannedAt": "2026-09-03 00:54",
+  "total": 0,
+  "stocks": []
 }
